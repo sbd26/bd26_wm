@@ -146,6 +146,7 @@ void resize_client(Client *client , Vec2 sz) {
 
   XResizeWindow(wm.display, client -> win, sz.x, sz.y);
   XResizeWindow(wm.display, client -> frame, sz.x, sz.y);
+  XRaiseWindow(wm.display, client -> frame);
 }
 
 void move_client(Client *client, Vec2 pos){
@@ -311,7 +312,7 @@ void handle_button_press(XButtonEvent e){
   wm.cursor_start_frame_pos = (Vec2){.x = (float)x, .y = (float)y};
   wm.cursor_start_frame_size = (Vec2){.x = (float)width, .y = (float)height};
 
-  XRaiseWindow(wm.display, e.window);
+  XRaiseWindow(wm.display, wm.client_windows[get_client_index(e.window)].frame);
   XSetInputFocus(wm.display, e.window, RevertToPointerRoot, CurrentTime);
 }
 
@@ -356,6 +357,7 @@ void grab_global_key(){
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_Down), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_Left), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_Right), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_T), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
 }
 
 
@@ -396,6 +398,7 @@ void handle_key_press(XKeyEvent e){
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_Up)) system(CMD_VOLUME_UP);
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_Down)) system(CMD_VOLUME_DOWN);
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_M)) system(CMD_VOLUME_MUTE);
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_T)) establish_window_layout();
 }
 
 
