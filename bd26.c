@@ -13,6 +13,7 @@
 
 
 const char *startup_commands[] = {
+  "setxkbmap us &",
   "nitrogen --restore &"
 };
 
@@ -109,18 +110,21 @@ void establish_window_layout(){
       return;
     }
 
-    move_client(master, (Vec2) {.x = 0, .y = 0});
-    resize_client(master, (Vec2){.x = (float)1366 / 2, .y = DISPLAY_HEIGHT});
-    master -> fullscreen = false;
-    XSetWindowBorderWidth(wm.display, master -> frame, BORDER_WIDTH);
-  }
+    // move_client(master, (Vec2) {.x = 0, .y = 0});
+    // resize_client(master, (Vec2){.x = (float)1366 / 2, .y = DISPLAY_HEIGHT});
+    // master -> fullscreen = false;
+    // XSetWindowBorderWidth(wm.display, master -> frame, BORDER_WIDTH);
 
 
-  for (uint32_t i = 1; i < clients_on_monitor; i++){
-    uint32_t client_index = master_index + 1;
-    resize_client(&wm.client_windows[client_index], (Vec2){.x = (float) 1366/ 2, .y = (float) 768 / clients_on_monitor - 1});
-    move_client(&wm.client_windows[client_index], (Vec2) {.x = 0.0 + (float) 1366 / 2, .y = 768.00 - (clients_on_monitor - 1) * i});
+    int fixed = 1366 / clients_on_monitor;
+    int x = 0;
+    for (uint32_t i = 0; i < clients_on_monitor; i++){
+      move_client(&wm.client_windows[i], (Vec2) {.x = x, .y = 0});
+      resize_client(&wm.client_windows[i], (Vec2) {.x = fixed, .y = DISPLAY_HEIGHT});
+      x += fixed + 10;
+    }
   }
+
 
 }
 
@@ -129,7 +133,7 @@ void resize_client(Client *client , Vec2 sz) {
   XWindowAttributes attributes;
   XGetWindowAttributes(wm.display, client -> win, &attributes);
 
-  if (sz.x >= DISPLAY_WIDTH || sz.y >= DISPLAY_HEIGHT){
+  if (sz.x >= DISPLAY_WIDTH && sz.y >= DISPLAY_HEIGHT){
     client -> fullscreen = true;
     XSetWindowBorderWidth(wm.display, client->frame, 0);
     client -> fullscreen_revert_size = (Vec2) {.x = attributes.width, .y = attributes.height};
@@ -174,7 +178,7 @@ void set_fullscreen(Window win){
 
   wm.client_windows[client_index].fullscreen_revert_pos = (Vec2) {.x = attribs.x, .y = attribs.y};
 
-  resize_client(&wm.client_windows[client_index], (Vec2) {.x = (float) DISPLAY_WIDTH, .y = (float) DISPLAY_HEIGHT} );
+  resize_client(&wm.client_windows[client_index], (Vec2) {.x = (float) DISPLAY_WIDTH, .y =  768} );
 
   move_client(&wm.client_windows[client_index], (Vec2){.x = 0, .y = 0});
 }
@@ -213,7 +217,7 @@ void window_frame(Window win){
 
   wm.client_windows[wm.clients_count++] = (Client) {.win = win, .frame = win_frame, .fullscreen = attribs.width >= DISPLAY_WIDTH && attribs.height >= DISPLAY_HEIGHT};
   grab_window_key(win);
-  // establish_window_layout();
+  establish_window_layout();
 }
 
 void window_unframe(Window win){
@@ -232,7 +236,7 @@ void window_unframe(Window win){
     wm.client_windows[i] = wm.client_windows[i + 1];
   }
   wm.clients_count --;
-  // establish_window_layout();
+  establish_window_layout();
 }
 //others but dorakri end
 
@@ -307,7 +311,7 @@ void handle_button_press(XButtonEvent e){
   wm.cursor_start_frame_pos = (Vec2){.x = (float)x, .y = (float)y};
   wm.cursor_start_frame_size = (Vec2){.x = (float)width, .y = (float)height};
 
-  XRaiseWindow(wm.display, frame);
+  XRaiseWindow(wm.display, e.window);
   XSetInputFocus(wm.display, e.window, RevertToPointerRoot, CurrentTime);
 }
 
