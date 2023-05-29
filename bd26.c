@@ -19,7 +19,8 @@ const char *startup_commands[] = {
 
 
 typedef enum {
-  WINDOW_LAYOUT_TILED = 0
+  WINDOW_LAYOUT_TILED = 0,
+  WINDOW_LAYOUT_TILED_VERTICAL = 1
 } WindowLayout;
 
 typedef struct {
@@ -119,15 +120,12 @@ void establish_window_layout(){
     int fixed = (1366 / clients_on_monitor) - 10;
     int x = 0;
     for (uint32_t i = 0; i < clients_on_monitor; i++){
-      move_client(&wm.client_windows[i], (Vec2) {.x = x, .y = 30});
       resize_client(&wm.client_windows[i], (Vec2) {.x = fixed, .y = DISPLAY_HEIGHT - 30});
+      move_client(&wm.client_windows[i], (Vec2) {.x = x, .y = 15});
       x += fixed + 10;
     }
   }
-
-
 }
-
 
 void resize_client(Client *client , Vec2 sz) {
   XWindowAttributes attributes;
@@ -367,6 +365,8 @@ void grab_window_key(Window win){
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CLOSE_WINDOW), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CYCLE_WINDOW), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, FULL_SCREEN), MOD, win, false, GrabModeAsync, GrabModeAsync);
+  // XGrabKey(wm.display, XKeysymToKeycode(wm.display, TILE_VERT), MOD, win, false, GrabModeAsync, GrabModeAsync);
+
 }
 
 void handle_key_press(XKeyEvent e){
