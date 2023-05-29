@@ -116,11 +116,11 @@ void establish_window_layout(){
     // XSetWindowBorderWidth(wm.display, master -> frame, BORDER_WIDTH);
 
 
-    int fixed = 1366 / clients_on_monitor;
+    int fixed = (1366 / clients_on_monitor) - 10;
     int x = 0;
     for (uint32_t i = 0; i < clients_on_monitor; i++){
-      move_client(&wm.client_windows[i], (Vec2) {.x = x, .y = 0});
-      resize_client(&wm.client_windows[i], (Vec2) {.x = fixed, .y = DISPLAY_HEIGHT});
+      move_client(&wm.client_windows[i], (Vec2) {.x = x, .y = 30});
+      resize_client(&wm.client_windows[i], (Vec2) {.x = fixed, .y = DISPLAY_HEIGHT - 30});
       x += fixed + 10;
     }
   }
