@@ -284,10 +284,12 @@ void set_fullscreen(Window win){
   XGetWindowAttributes(wm.display, wm.client_windows[current_workspace][client_index].frame, &attribs);
 
   wm.client_windows[current_workspace][client_index].fullscreen_revert_pos = (Vec2) {.x = attribs.x, .y = attribs.y};
+  wm.client_windows[current_workspace][client_index].fullscreen_revert_size = (Vec2) {.x = attribs.width, .y = attribs.height};
 
   resize_client(&wm.client_windows[current_workspace][client_index], (Vec2) {.x = (float) DISPLAY_WIDTH - 20, .y =  768 - 20} );
 
   move_client(&wm.client_windows[current_workspace][client_index], (Vec2){.x = 10, .y = 10});
+  wm.client_windows[current_workspace][client_index].fullscreen = true;
 }
 
 void unset_fullscreen(Window win){
@@ -296,6 +298,7 @@ void unset_fullscreen(Window win){
 
   resize_client(&wm.client_windows[current_workspace][client_index], wm.client_windows[current_workspace][client_index].fullscreen_revert_size);
   move_client(&wm.client_windows[current_workspace][client_index], wm.client_windows[current_workspace][client_index].fullscreen_revert_pos);
+  wm.client_windows[current_workspace][client_index].fullscreen = false;
 }
 
 
