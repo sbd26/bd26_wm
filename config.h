@@ -1,8 +1,9 @@
+
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define CLIENT_WINDOW_CAP 256
 
-#define MOD Mod4Mask
+#define MOD Mod1Mask
 
 //APPLICATION
 #define CMD_BROWSER     "firefox &"
@@ -12,12 +13,10 @@
 #define CMD_VOLUME_DOWN "pactl set-sink-volume @DEFAULT_SINK@ -5%"
 #define CMD_VOLUME_MUTE "pactl set-sink-mute   @DEFAULT_SINK@ toggle"
 
-
-
 //WINDOW RELATED 
-#define BORDER_WIDTH  3
-#define FBORDER_COLOR 0xff0000
-// #define ABORDER_COLOR 0xff0000
+#define BORDER_WIDTH  2
+#define FBORDER_COLOR 0x8aadf4
+#define UBORDER_COLOR 0x2E3440
 #define DESKTOP_COUNT 9
 #define BG_COLOR      0xffffff
 
@@ -30,7 +29,10 @@
 #define FULL_SCREEN     XK_F
 #define CYCLE_WINDOW    XK_Tab
 #define TITLE_AGAIN     XK_T
+#define TILE_VERT   XK_V
+#define SWITCH_WORKSPACE   XK_Right
 
 
 #define DISPLAY_HEIGHT  768
 #define DISPLAY_WIDTH   1366
+

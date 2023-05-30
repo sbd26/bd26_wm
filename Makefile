@@ -1,5 +1,5 @@
 install:
-	gcc -lX11 -lXcursor -O3 -ffast-math -Wall -Wextra bd26.c -o bd26 
+	gcc -lX11 -lXcursor -O3 -ffast-math -Wall -Wextra -lXcomposite -lXft -lfontconfig -I /usr/include/freetype2 bd26.c -o bd26 
 	cp bd26 /usr/bin/bd26
 
 clean:
