@@ -33,6 +33,7 @@ typedef struct {
   bool fullscreen;
   Vec2 fullscreen_revert_size;
   Vec2 fullscreen_revert_pos;
+  bool is_floating;
 } Client;
 
 
@@ -40,6 +41,7 @@ typedef struct {
   Display *display;
   Window root;
   bool running;
+  uint8_t window_gap;
   
   WindowLayout current_layout;
   Client client_windows[CLIENT_WINDOW_CAP];
@@ -82,13 +84,53 @@ static void move_client(Client *client, Vec2 pos);
 static void resize_client(Client *client, Vec2 sz);
 static void grab_global_key();
 static void grab_window_key(Window win);
-static void establish_window_layout();
+static void establish_window_layout(bool restore_back);
 //------other Functions end
 
 //tiling related function
 //
 
-void establish_window_layout(){
+void establish_window_layout(bool restore_back){
+  Client * tmp_clients[CLIENT_WINDOW_CAP];
+  uint32_t clients_count = 0;
+
+  for (uint32_t i = 0; i < wm.clients_count; i++){
+    if (!wm.client_windows[i].is_floating || restore_back){
+      tmp_clients[clients_count++] = &wm.client_windows[i];
+    }
+  }
+  if (restore_back){
+  for (uint32_t i = 0; i < clients_count; i++){
+    tmp_clients[i]->is_floating = false;
+  }
+  }
+
+  if (clients_count == 0)return;
+  if (wm.current_layout == WINDOW_LAYOUT_TILED){
+    Client * rooT = tmp_clients[0];
+
+    if (clients_count == 1){
+      set_fullscreen(rooT -> frame);
+      return;
+    }
+
+    resize_client(rooT, (Vec2){.x = (float)DISPLAY_WIDTH / 2, .y = DISPLAY_HEIGHT - 20});
+    move_client(rooT, (Vec2){.x = 5, .y = 10});
+    rooT -> fullscreen = false;
+    float y_cordintae = 0;
+
+    for (uint32_t i = 1; i < clients_count; i++){
+      resize_client(tmp_clients[i], (Vec2){.x = ((float)DISPLAY_WIDTH / 2) - 22, .y = ((float)DISPLAY_HEIGHT / (clients_count - 1) - 20)});
+      move_client(tmp_clients[i], (Vec2){.x = ((float)DISPLAY_WIDTH / 2 + 15), .y = y_cordintae + 10 });
+      y_cordintae += ((float) DISPLAY_HEIGHT / (clients_count - 1));
+    }
+  }
+}
+
+
+
+
+void establish_window_layout_bak(){
   int32_t master_index = -1;
   uint32_t clients_on_monitor = 0;
   bool found_master = false;
@@ -110,19 +152,12 @@ void establish_window_layout(){
       set_fullscreen(master->frame);
       return;
     }
-
-    // move_client(master, (Vec2) {.x = 0, .y = 0});
-    // resize_client(master, (Vec2){.x = (float)1366 / 2, .y = DISPLAY_HEIGHT});
-    // master -> fullscreen = false;
-    // XSetWindowBorderWidth(wm.display, master -> frame, BORDER_WIDTH);
-
-
-    int fixed = (1366 / clients_on_monitor) - 10;
-    int x = 0;
+    int fixed = (1366 / clients_on_monitor) - wm.window_gap;
+    int x = wm.window_gap;
     for (uint32_t i = 0; i < clients_on_monitor; i++){
-      resize_client(&wm.client_windows[i], (Vec2) {.x = fixed, .y = DISPLAY_HEIGHT - 30});
+      resize_client(&wm.client_windows[i], (Vec2) {.x = fixed - wm.window_gap, .y = DISPLAY_HEIGHT - 30});
       move_client(&wm.client_windows[i], (Vec2) {.x = x, .y = 15});
-      x += fixed + 10;
+      x += fixed + wm.window_gap;
     }
   }
 }
@@ -216,7 +251,8 @@ void window_frame(Window win){
 
   wm.client_windows[wm.clients_count++] = (Client) {.win = win, .frame = win_frame, .fullscreen = attribs.width >= DISPLAY_WIDTH && attribs.height >= DISPLAY_HEIGHT};
   grab_window_key(win);
-  establish_window_layout();
+  wm.client_windows[wm.clients_count].is_floating = false;
+  establish_window_layout(false);
 }
 
 void window_unframe(Window win){
@@ -235,7 +271,7 @@ void window_unframe(Window win){
     wm.client_windows[i] = wm.client_windows[i + 1];
   }
   wm.clients_count --;
-  establish_window_layout();
+  establish_window_layout(false);
 }
 //others but dorakri end
 
@@ -319,6 +355,7 @@ void handle_motion_notify(XMotionEvent e) {
   Vec2 drag_pos = (Vec2){.x = (float)e.x_root, .y = (float)e.y_root};
   Vec2 delta_drag = (Vec2){.x = drag_pos.x - wm.cursor_start_pos.x,
                            .y = drag_pos.y - wm.cursor_start_pos.y};
+  Client * tmp_client = &wm.client_windows[get_client_index(e.window)];
 
   if (e.state & Button1Mask) {
     /* Pressed alt + left mouse */
@@ -326,10 +363,15 @@ void handle_motion_notify(XMotionEvent e) {
         (Vec2){.x = (float)(wm.cursor_start_frame_pos.x + delta_drag.x),
                .y = (float)(wm.cursor_start_frame_pos.y + delta_drag.y)};
       if (wm.client_windows[get_client_index(e.window)].fullscreen) {
-        wm.client_windows[get_client_index(e.window)].fullscreen = false;
-        XSetWindowBorderWidth(wm.display, wm.client_windows[get_client_index(e.window)].frame, BORDER_WIDTH);
+        tmp_client -> fullscreen = false;
+        XSetWindowBorderWidth(wm.display, tmp_client -> frame, BORDER_WIDTH);
       }
-    XMoveWindow(wm.display, frame, drag_dest.x, drag_dest.y);
+    move_client(tmp_client, drag_dest);
+    if (!tmp_client -> is_floating){
+      tmp_client -> is_floating = true;
+      establish_window_layout(false);
+    }
+    XRaiseWindow(wm.display, tmp_client -> frame);
   } else if (e.state & Button3Mask) {
     /* Pressed alt + right mouse*/
     if (wm.client_windows[get_client_index(e.window)].fullscreen) return;
@@ -340,7 +382,12 @@ void handle_motion_notify(XMotionEvent e) {
     Vec2 resize_dest =
         (Vec2){.x = wm.cursor_start_frame_size.x + resize_delta.x,
                .y = wm.cursor_start_frame_size.y + resize_delta.y};
-    resize_client(&wm.client_windows[get_client_index(e.window)], resize_dest);
+    
+    resize_client(tmp_client, resize_dest);
+    if (!tmp_client -> is_floating){
+      tmp_client -> is_floating = true;
+      establish_window_layout(false);
+    }
   }
 }
 
@@ -356,6 +403,7 @@ void grab_global_key(){
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_Left), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_Right), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_T), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  // XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_plus), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
 }
 
 
@@ -398,7 +446,7 @@ void handle_key_press(XKeyEvent e){
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_Up)) system(CMD_VOLUME_UP);
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_Down)) system(CMD_VOLUME_DOWN);
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_M)) system(CMD_VOLUME_MUTE);
-  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_T)) establish_window_layout();
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_T)) establish_window_layout(true);
 }
 
 
@@ -410,6 +458,7 @@ void run_bd26(){
   wm.cursor_start_frame_pos = (Vec2){.x = 0.0f, .y = 0.0f};
   wm.cursor_start_pos = (Vec2){.x = 0.0f, .y = 0.0f};
   wm.current_layout = WINDOW_LAYOUT_TILED;
+  wm.window_gap = 10;
   wm.running = true;
   XSelectInput(wm.display, wm.root, SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask | ButtonPressMask);
   XSync(wm.display, false);
