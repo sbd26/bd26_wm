@@ -49,6 +49,7 @@ typedef struct {
   Vec2 fullscreen_revert_pos;
   bool is_floating;
   Decoration decoration;
+  bool was_focused;
 } Client;
 
 
@@ -128,6 +129,8 @@ void change_workspace(){
   if (current_workspace >= 4) current_workspace -= 4;
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
       XMapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
+      if (wm.client_windows[current_workspace][i].was_focused)
+        XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win, RevertToPointerRoot, CurrentTime);
   }
   run_bd26();
 }
@@ -142,6 +145,8 @@ void change_workspace_back(){
   }
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
     XMapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
+      if (wm.client_windows[current_workspace][i].was_focused)
+        XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win, RevertToPointerRoot, CurrentTime);
   }
   run_bd26();
 }
@@ -260,10 +265,12 @@ void cycle_window(Window win){
   }
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
     XSetWindowBorder(wm.display, wm.client_windows[current_workspace][i].frame, UBORDER_COLOR);
+    wm.client_windows[current_workspace][i].was_focused = false;
   }
   XRaiseWindow(wm.display, client.frame);
   XSetInputFocus(wm.display, client.win, RevertToPointerRoot, CurrentTime);
-    XSetWindowBorder(wm.display, client.frame, FBORDER_COLOR);
+  XSetWindowBorder(wm.display, client.frame, FBORDER_COLOR);
+  wm.client_windows[current_workspace][get_client_index(client.win)].was_focused = true;
 }
 
 void set_fullscreen(Window win){
@@ -325,6 +332,10 @@ void window_frame(Window win){
   grab_window_key(win);
   wm.client_windows[current_workspace][wm.clients_count[current_workspace]].is_floating = false;
   establish_window_layout(false);
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
+    wm.client_windows[current_workspace][i].was_focused = false;
+  }
+  wm.client_windows[current_workspace][get_client_index(win_frame)].was_focused = true;
 }
 
 void window_unframe(Window win){
@@ -332,11 +343,9 @@ void window_unframe(Window win){
 
   if (client_index == -1) {printf("Returning from unframe");return;}
   const Window frame_window = wm.client_windows[current_workspace][client_index].frame;
-  printf("UNFRAMING WINDOW AFTER PRESSING MOD + Q\n\n\n\n");
 
   XReparentWindow(wm.display, frame_window, wm.root, 0, 0);
   XReparentWindow(wm.display, win, wm.root, 0, 0);
-  XSetInputFocus(wm.display, wm.root, RevertToPointerRoot, CurrentTime);
   XUnmapWindow(wm.display, frame_window);
 
   for (uint64_t i = client_index; i < wm.clients_count[current_workspace] - 1; i++)
@@ -345,12 +354,16 @@ void window_unframe(Window win){
   }
   wm.clients_count[current_workspace] --;
 
-  if(wm.clients_count[current_workspace] != 0){
-    XSetWindowBorder(wm.display, wm.client_windows[current_workspace][0].frame, FBORDER_COLOR);
-  for (uint32_t i = 1; i < wm.clients_count[current_workspace ]; i++){
+  if(wm.clients_count[current_workspace] > 0){
+    uint32_t i;
+  for ( i = 0; i < wm.clients_count[current_workspace ] - 1; i++){
     XSetWindowBorder(wm.display, wm.client_windows[current_workspace][i].frame, UBORDER_COLOR);
   }
+    XSetWindowBorder(wm.display, wm.client_windows[current_workspace][i].frame, FBORDER_COLOR);
+    XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win, RevertToPointerRoot, CurrentTime);
   }
+  else 
+    XSetInputFocus(wm.display, wm.root, RevertToPointerRoot, CurrentTime);
 
   establish_window_layout(false);
 }
@@ -383,12 +396,10 @@ void handle_map_request(XMapRequestEvent e){
 }
 
 void handle_unmap_notify(XUnmapEvent e){
-
   if (get_client_index(e.window) == -1) {
     printf("Ignore UnmapNotify for non-client window\n");
     return;
   }
-  printf("Unmapping Window\n");
   window_unframe(e.window);
 }
 
