@@ -4,6 +4,8 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xcursor/Xcursor.h>
+#include <X11/extensions/Xrender.h>
+#include <X11/extensions/Xcomposite.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -14,7 +16,8 @@
 
 const char *startup_commands[] = {
   "setxkbmap us &",
-  "nitrogen --restore &"
+  "nitrogen --restore &",
+  "picom &"
 };
 
 
@@ -88,7 +91,6 @@ static void establish_window_layout(bool restore_back);
 //------other Functions end
 
 //tiling related function
-//
 
 void establish_window_layout(bool restore_back){
   Client * tmp_clients[CLIENT_WINDOW_CAP];
@@ -204,6 +206,9 @@ void cycle_window(Window win){
 }
 
 void set_fullscreen(Window win){
+
+  if (win == wm.root) return;
+
   uint32_t client_index = get_client_index(win);
   if (wm.client_windows[client_index].fullscreen) return;
 
@@ -218,6 +223,7 @@ void set_fullscreen(Window win){
 }
 
 void unset_fullscreen(Window win){
+  if (win == wm.root) return;
   const uint32_t client_index = get_client_index(win);
 
   resize_client(&wm.client_windows[client_index], wm.client_windows[client_index].fullscreen_revert_size);
@@ -242,6 +248,7 @@ void window_frame(Window win){
     FBORDER_COLOR,
     BG_COLOR
     );
+  XCompositeRedirectWindow(wm.display, win_frame, CompositeRedirectAutomatic);
   //Select Input for the win_frame
   XSelectInput(wm.display, win_frame, SubstructureNotifyMask | SubstructureRedirectMask);
   XAddToSaveSet(wm.display, win_frame);
