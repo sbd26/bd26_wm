@@ -4,6 +4,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/extensions/Xcomposite.h>
+#include <X11/extensions/XTest.h>
 #include <stdbool.h>
 #include <string.h>
 #include <err.h>
@@ -128,8 +129,8 @@ void change_focus_window(Window win){
 //failed start
 void send_to_another_workspace(int dest_indx, Window win){
   printf("Hello\n\n");
-  if (dest_indx > 4) dest_indx -= 4; 
-  if (dest_indx < 0) dest_indx += 4;
+  if (dest_indx > WORKSPACE) dest_indx -= WORKSPACE; 
+  if (dest_indx < WORKSPACE) dest_indx += WORKSPACE;
 
   Client * client;
   uint32_t client_index = get_client_index(win);
@@ -169,13 +170,13 @@ void change_workspace(){
     XUnmapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
   }
   current_workspace++;
-  if (current_workspace >= 4) current_workspace -= 4;
+  if (current_workspace >= WORKSPACE) current_workspace -= WORKSPACE;
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
       XMapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
       if (wm.client_windows[current_workspace][i].was_focused)
         XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win, RevertToPointerRoot, CurrentTime);
   }
-  run_bd26();
+  // run_bd26();
 }
 
 void change_workspace_back(){
@@ -184,14 +185,14 @@ void change_workspace_back(){
   }
   current_workspace--;
   if (current_workspace < 0){
-    current_workspace += 4;
+    current_workspace += WORKSPACE;
   }
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
     XMapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
       if (wm.client_windows[current_workspace][i].was_focused)
         XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win, RevertToPointerRoot, CurrentTime);
   }
-  run_bd26();
+  // run_bd26();
 }
 
 
@@ -258,7 +259,7 @@ void establish_window_layout_bak(){
       set_fullscreen(master->frame);
       return;
     }
-    int fixed = (1366 / clients_on_monitor) - wm.window_gap;
+    int fixed = (DISPLAY_WIDTH / clients_on_monitor) - wm.window_gap;
     int x = wm.window_gap;
     for (uint32_t i = 0; i < clients_on_monitor; i++){
       resize_client(&wm.client_windows[current_workspace][i], (Vec2) {.x = fixed - wm.window_gap, .y = DISPLAY_HEIGHT - 30});
@@ -307,9 +308,9 @@ void set_fullscreen(Window win){
   wm.client_windows[current_workspace][client_index].fullscreen_revert_pos = (Vec2) {.x = attribs.x, .y = attribs.y};
   wm.client_windows[current_workspace][client_index].fullscreen_revert_size = (Vec2) {.x = attribs.width, .y = attribs.height};
 
-  resize_client(&wm.client_windows[current_workspace][client_index], (Vec2) {.x = (float) DISPLAY_WIDTH - 20, .y =  768 - 20} );
+  resize_client(&wm.client_windows[current_workspace][client_index], (Vec2) {.x = (float) DISPLAY_WIDTH - 20, .y =  DISPLAY_HEIGHT - 20} );
 
-  move_client(&wm.client_windows[current_workspace][client_index], (Vec2){.x = 10, .y = 10});
+  move_client(&wm.client_windows[current_workspace][client_index], (Vec2){.x = 9.7, .y = 7.5});
   wm.client_windows[current_workspace][client_index].fullscreen = true;
 }
 
