@@ -1,13 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdlib.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/extensions/Xcomposite.h>
 #include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 #include <err.h>
 #include "config.h"
@@ -19,6 +16,7 @@ int8_t current_workspace = 0;
 const char *startup_commands[] = {
   "setxkbmap us &",
   "nitrogen --restore &",
+  "dunst --config ~/.config/i3/dunstrc &"
   "picom &"
 };
 
@@ -110,6 +108,36 @@ static void bd26_bar();
 //------other Functions end
 
 //tiling related function
+
+
+//failed start
+void send_to_another_workspace(int dest_indx, Window win){
+  printf("Hello\n\n");
+  if (dest_indx > 4) dest_indx -= 4; 
+  if (dest_indx < 0) dest_indx += 4;
+
+  Client * client;
+  uint32_t client_index = get_client_index(win);
+  client  = &wm.client_windows[current_workspace][client_index];
+
+  //Copy The frame in the destination workspace
+  wm.clients_count[dest_indx] = 0;
+  wm.client_windows[dest_indx][wm.clients_count[dest_indx] + 1] = *client;
+  wm.clients_count[dest_indx] += 1;
+  XUnmapWindow(wm.display, client->frame);
+  XMapWindow(wm.display, wm.client_windows[dest_indx][wm.clients_count[dest_indx]].frame);
+  // change_workspace();
+}
+//failed end
+
+void swap(Client *client1, Client *client2){
+  Client tmp = *client1;
+  *client1 = *client2;
+  *client2 = tmp;
+  establish_window_layout(false);
+}
+
+
 
 
 void bd26_bar(){
@@ -507,12 +535,12 @@ void grab_global_key(){
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, OPEN_BROWSER), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, OPEN_LAUNCHER), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, KILL_WM), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_M), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_Up), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_Down), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_Left), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_Right), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, XK_T), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, MAKE_TILE), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, CHANGE_WORKSPACE), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, VOLUME_UP), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, VOLUME_DOWN), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, VOLUME_MUTE), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, CHANGE_WORKSPACE_BACK), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
 }
 
 
@@ -522,6 +550,8 @@ void grab_window_key(Window win){
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CLOSE_WINDOW), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CYCLE_WINDOW), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, FULL_SCREEN), MOD, win, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, SWAP_WINDOW), MOD, win, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, SWAP_UP_DOWN), MOD, win, false, GrabModeAsync, GrabModeAsync);
 
 }
 
@@ -551,12 +581,36 @@ void handle_key_press(XKeyEvent e){
     else 
       set_fullscreen(e.window);
   }
-  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_Up)) system(CMD_VOLUME_UP);
-  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_Down)) system(CMD_VOLUME_DOWN);
-  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_M)) system(CMD_VOLUME_MUTE);
-  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_T)) establish_window_layout(true);
-  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_Right)) change_workspace();
-  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, XK_Left)) change_workspace_back();
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, VOLUME_UP)) system(CMD_VOLUME_UP);
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, VOLUME_DOWN)) system(CMD_VOLUME_DOWN);
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, VOLUME_MUTE)) system(CMD_VOLUME_MUTE);
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, MAKE_TILE)) establish_window_layout(true);
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, CHANGE_WORKSPACE)) change_workspace();
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, CHANGE_WORKSPACE_BACK)) change_workspace_back();
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, SWAP_WINDOW)){
+    if (wm.clients_count[current_workspace] >= 2){
+      uint32_t client_index = get_client_index(e.window);
+      if (client_index == 0){
+        swap(&wm.client_windows[current_workspace][0], 
+          &wm.client_windows[current_workspace][1]
+          );
+      }
+
+      else{
+        swap(
+          &wm.client_windows[current_workspace][0],
+          &wm.client_windows[current_workspace][client_index]
+        );
+      }
+    }
+  }
+  else if (e.state & MOD | ShiftMask && e.keycode == XKeysymToKeycode(wm.display, SWAP_UP_DOWN)){
+    if (wm.clients_count[current_workspace] >= 3){
+      uint32_t tmp_index = get_client_index(e.window);
+      if (tmp_index == 1) tmp_index = 2;
+      swap(&wm.client_windows[current_workspace][tmp_index], &wm.client_windows[current_workspace][tmp_index - 1]);
+    }
+  }
 }
 
 
@@ -587,7 +641,6 @@ void run_bd26(){
   grab_global_key();
   //Dispatch Event Start
   while (wm.running) {
-    if (XPending(wm.display)){
     XEvent e;
     XNextEvent(wm.display, &e);
     switch (e.type) {
@@ -623,7 +676,6 @@ void run_bd26(){
         handle_motion_notify(e.xmotion);break;
     }
     }
-  }
 }
 
 bd26 init_bd26(){
