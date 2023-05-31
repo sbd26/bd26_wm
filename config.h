@@ -3,7 +3,7 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define CLIENT_WINDOW_CAP 256
 
-#define MOD Mod1Mask
+#define MOD Mod4Mask
 
 //APPLICATION
 #define CMD_BROWSER     "firefox &"
@@ -20,17 +20,37 @@
 #define DESKTOP_COUNT 9
 #define BG_COLOR      0xffffff
 
+
+//TODO: Implement This feature
+//WINDOW NAVIGATOR KEY (VIM LIKE)
+#define NAVIGATE_UP  XK_K
+#define NAVIGATE_DOWN XK_J
+//WINDOW NAVIGATOR END
+
+
+
 //KEYBINDING
 #define OPEN_TERMINAL   XK_Return
 #define OPEN_BROWSER    XK_W
 #define OPEN_LAUNCHER   XK_D
-#define CLOSE_WINDOW    XK_Q
+#define CLOSE_WINDOW    XK_Q //ok 
 #define KILL_WM         XK_C
-#define FULL_SCREEN     XK_F
-#define CYCLE_WINDOW    XK_Tab
-#define TITLE_AGAIN     XK_T
-#define TILE_VERT   XK_V
-#define SWITCH_WORKSPACE   XK_Right
+#define FULL_SCREEN     XK_F //ok
+#define MAKE_TILE    XK_T //ok
+
+
+//WORKSPACE NAVIGATOR
+#define CHANGE_WORKSPACE XK_Tab //ok
+#define CHANGE_WORKSPACE_BACK XK_B //ok
+#define SWAP_WINDOW XK_A //ok
+#define SWAP_UP_DOWN XK_Z //ok
+
+
+
+//Volumet Related
+#define VOLUME_UP   XK_Up
+#define VOLUME_DOWN XK_Down
+#define VOLUME_MUTE XK_M
 
 
 #define DISPLAY_HEIGHT  768
