@@ -96,7 +96,6 @@ static void window_frame(Window win);
 static void window_unframe(Window win);
 static Window get_frame_window(Window win);
 static int32_t get_client_index(Window win);
-static void cycle_window(Window win);
 static void move_client(Client *client, Vec2 pos);
 static void resize_client(Client *client, Vec2 sz);
 static void grab_global_key();
@@ -105,9 +104,25 @@ static void establish_window_layout(bool restore_back);
 static void change_workspace();
 static void run_bd26();
 static void bd26_bar();
+static void change_focus_window(Window win);
 //------other Functions end
 
 //tiling related function
+
+
+void change_focus_window(Window win){
+  uint32_t client_index = get_client_index(win);
+
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
+    XSetWindowBorder(wm.display, wm.client_windows[current_workspace][i].frame, UBORDER_COLOR);
+    wm.client_windows[current_workspace][i].was_focused = false;
+  }
+  XSetWindowBorder(wm.display, wm.client_windows[current_workspace][client_index].frame, FBORDER_COLOR);
+  XRaiseWindow(wm.display, wm.client_windows[current_workspace][client_index].frame);
+  XSetInputFocus(wm.display, wm.client_windows[current_workspace][client_index].win, RevertToPointerRoot, CurrentTime);
+  wm.client_windows[current_workspace][client_index].was_focused = true;
+}
+
 
 
 //failed start
@@ -278,28 +293,6 @@ void move_client(Client *client, Vec2 pos){
 }
 
 
-void cycle_window(Window win){
-  Client client;
-  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
-    if (wm.client_windows[current_workspace][i].win == win || wm.client_windows[current_workspace][i].frame == win) {
-      if (i + 1 >= wm.clients_count[current_workspace]){
-        client = wm.client_windows[current_workspace][0];
-      }
-      else {
-        client = wm.client_windows[current_workspace][i + 1];
-      }
-      break;
-    }
-  }
-  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
-    XSetWindowBorder(wm.display, wm.client_windows[current_workspace][i].frame, UBORDER_COLOR);
-    wm.client_windows[current_workspace][i].was_focused = false;
-  }
-  XRaiseWindow(wm.display, client.frame);
-  XSetInputFocus(wm.display, client.win, RevertToPointerRoot, CurrentTime);
-  XSetWindowBorder(wm.display, client.frame, FBORDER_COLOR);
-  wm.client_windows[current_workspace][get_client_index(client.win)].was_focused = true;
-}
 
 void set_fullscreen(Window win){
 
@@ -548,10 +541,11 @@ void grab_window_key(Window win){
   XGrabButton(wm.display, Button1, MOD, win, false, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
   XGrabButton(wm.display, Button3, MOD, win, false, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CLOSE_WINDOW), MOD, win, false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, CYCLE_WINDOW), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, FULL_SCREEN), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, SWAP_WINDOW), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, SWAP_UP_DOWN), MOD, win, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, NAVIGATE_UP), MOD, win, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, NAVIGATE_DOWN), MOD, win, false, GrabModeAsync, GrabModeAsync);
 
 }
 
@@ -566,9 +560,6 @@ void handle_key_press(XKeyEvent e){
       msg.xclient.format = 32;
       msg.xclient.data.l[0] = XInternAtom(wm.display, "WM_DELETE_WINDOW", false);
       XSendEvent(wm.display, e.window, false, 0, &msg);
-  }
-  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, CYCLE_WINDOW)){
-    cycle_window(e.window);
   }
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, KILL_WM)) wm.running = false;
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, OPEN_TERMINAL)) system(CMD_TERMINAL);
@@ -610,6 +601,20 @@ void handle_key_press(XKeyEvent e){
       if (tmp_index == 1) tmp_index = 2;
       swap(&wm.client_windows[current_workspace][tmp_index], &wm.client_windows[current_workspace][tmp_index - 1]);
     }
+  }
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, NAVIGATE_DOWN)){
+    if (wm.clients_count[current_workspace] > 1){
+      uint32_t client_index = get_client_index(e.window);
+      if (client_index == wm.clients_count[current_workspace] - 1) client_index = -1;
+      change_focus_window(wm.client_windows[current_workspace][client_index + 1].win);
+    }
+  }
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, NAVIGATE_UP)){
+    if (wm.clients_count[current_workspace] > 1){
+      uint32_t client_index = get_client_index(e.window);
+      if (client_index == 0) client_index = wm.clients_count[current_workspace];
+      change_focus_window(wm.client_windows[current_workspace][client_index -1].win);
+      }
   }
 }
 
