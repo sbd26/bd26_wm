@@ -14,11 +14,20 @@
 
 int8_t current_workspace = 0;
 
+const char * make_window_floating[] = {
+  "Thunar",
+  "flameshot",
+  "Alacritty",
+};
+
+
 const char *startup_commands[] = {
+  "killall dunst &",
   "setxkbmap us &",
   "nitrogen --restore &",
-  "dunst --config ~/.config/i3/dunstrc &"
-  "picom &"
+  "dunst --config ~/.config/i3/dunstrc &",
+  "picom &" ,
+  "polybar &"
 };
 
 
@@ -124,26 +133,14 @@ void change_focus_window(Window win){
   wm.client_windows[current_workspace][client_index].was_focused = true;
 }
 
+void print_workspace_number(){
+  char command[50];
+  sprintf(command, "echo %d > ~/test.txt", current_workspace);
+  system(command);
+}
 
 
 //failed start
-void send_to_another_workspace(int dest_indx, Window win){
-  printf("Hello\n\n");
-  if (dest_indx > WORKSPACE) dest_indx -= WORKSPACE; 
-  if (dest_indx < WORKSPACE) dest_indx += WORKSPACE;
-
-  Client * client;
-  uint32_t client_index = get_client_index(win);
-  client  = &wm.client_windows[current_workspace][client_index];
-
-  //Copy The frame in the destination workspace
-  wm.clients_count[dest_indx] = 0;
-  wm.client_windows[dest_indx][wm.clients_count[dest_indx] + 1] = *client;
-  wm.clients_count[dest_indx] += 1;
-  XUnmapWindow(wm.display, client->frame);
-  XMapWindow(wm.display, wm.client_windows[dest_indx][wm.clients_count[dest_indx]].frame);
-  // change_workspace();
-}
 //failed end
 
 void swap(Client *client1, Client *client2){
@@ -176,6 +173,7 @@ void change_workspace(){
       if (wm.client_windows[current_workspace][i].was_focused)
         XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win, RevertToPointerRoot, CurrentTime);
   }
+  print_workspace_number();
   // run_bd26();
 }
 
@@ -193,6 +191,7 @@ void change_workspace_back(){
         XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win, RevertToPointerRoot, CurrentTime);
   }
   // run_bd26();
+  print_workspace_number();
 }
 
 
@@ -221,14 +220,15 @@ void establish_window_layout(bool restore_back){
       return;
     }
 
-    resize_client(rooT, (Vec2){.x = (float)DISPLAY_WIDTH / 2, .y = DISPLAY_HEIGHT - 20});
-    move_client(rooT, (Vec2){.x = 5, .y = 10});
+    resize_client(rooT, (Vec2){.x = (float)DISPLAY_WIDTH / 2, .y = DISPLAY_HEIGHT - 35});
+    move_client(rooT, (Vec2){.x = 5, .y = 25});
     rooT -> fullscreen = false;
-    float y_cordintae = 0;
+    float y_cordintae = 25;
 
     for (uint32_t i = 1; i < clients_count; i++){
-      resize_client(tmp_clients[i], (Vec2){.x = ((float)DISPLAY_WIDTH / 2) - 22, .y = ((float)DISPLAY_HEIGHT / (clients_count - 1) - 20)});
-      move_client(tmp_clients[i], (Vec2){.x = ((float)DISPLAY_WIDTH / 2 + 15), .y = y_cordintae + 10 });
+        resize_client(tmp_clients[i], (Vec2){.x = ((float)DISPLAY_WIDTH / 2) - 22, .y = ((float)DISPLAY_HEIGHT / (clients_count - 1)) - 35 });
+      move_client(tmp_clients[i], (Vec2){.x = ((float)DISPLAY_WIDTH / 2 + 15), .y = y_cordintae});
+      if (i == 1) y_cordintae = 20;
       y_cordintae += ((float) DISPLAY_HEIGHT / (clients_count - 1));
     }
   }
@@ -308,9 +308,9 @@ void set_fullscreen(Window win){
   wm.client_windows[current_workspace][client_index].fullscreen_revert_pos = (Vec2) {.x = attribs.x, .y = attribs.y};
   wm.client_windows[current_workspace][client_index].fullscreen_revert_size = (Vec2) {.x = attribs.width, .y = attribs.height};
 
-  resize_client(&wm.client_windows[current_workspace][client_index], (Vec2) {.x = (float) DISPLAY_WIDTH - 20, .y =  DISPLAY_HEIGHT - 20} );
+  resize_client(&wm.client_windows[current_workspace][client_index], (Vec2) {.x = (float) DISPLAY_WIDTH - 20, .y =  DISPLAY_HEIGHT - 35} );
 
-  move_client(&wm.client_windows[current_workspace][client_index], (Vec2){.x = 9.7, .y = 7.5});
+  move_client(&wm.client_windows[current_workspace][client_index], (Vec2){.x = 9.7, .y = 25});
   wm.client_windows[current_workspace][client_index].fullscreen = true;
 }
 
@@ -356,6 +356,18 @@ void window_frame(Window win){
   wm.client_windows[current_workspace][wm.clients_count[current_workspace]++] = (Client) {.win = win, .frame = win_frame, .fullscreen = attribs.width >= DISPLAY_WIDTH && attribs.height >= DISPLAY_HEIGHT};
   grab_window_key(win);
   wm.client_windows[current_workspace][wm.clients_count[current_workspace]].is_floating = false;
+
+  XClassHint classhint;
+  if (XGetClassHint(wm.display, win, &classhint)){
+    for (int i = 0; i < sizeof(make_window_floating) / sizeof(make_window_floating[0]); i++){
+      if (strcmp(classhint.res_class, make_window_floating[i]) == 0){
+        wm.client_windows[current_workspace][get_client_index(win_frame)].is_floating = true;
+      }
+    }
+  }
+  XFree(classhint.res_class);
+
+
   establish_window_layout(false);
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
     wm.client_windows[current_workspace][i].was_focused = false;
@@ -484,19 +496,12 @@ void handle_motion_notify(XMotionEvent e) {
         tmp_client -> fullscreen = false;
         // XSetWindowBorderWidth(wm.display, tmp_client -> frame, BORDER_WIDTH);
       }
-    move_client(tmp_client, drag_dest);
-    if (!tmp_client -> is_floating){
-      tmp_client -> is_floating = true;
-      establish_window_layout(false);
-    }
-    XRaiseWindow(wm.display, tmp_client -> frame);
-    for(uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
-      if (wm.client_windows[current_workspace][i].frame == tmp_client -> frame){
-        XSetWindowBorder(wm.display, tmp_client->frame, FBORDER_COLOR);
-        continue;
+      change_focus_window(e.window);
+      move_client(tmp_client, drag_dest);
+      if (!tmp_client -> is_floating){
+        tmp_client -> is_floating = true;
+        establish_window_layout(false);
       }
-      XSetWindowBorder(wm.display , wm.client_windows[current_workspace][i].frame, UBORDER_COLOR);
-    }
   } else if (e.state & Button3Mask) {
     /* Pressed alt + right mouse*/
     if (wm.client_windows[current_workspace][get_client_index(e.window)].fullscreen) return;
