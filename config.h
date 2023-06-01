@@ -3,7 +3,7 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define CLIENT_WINDOW_CAP 256
 
-#define MOD Mod4Mask
+#define MOD Mod1Mask
 
 #define SWAP  XK_S
 
@@ -55,6 +55,6 @@
 #define VOLUME_MUTE XK_M
 
 
-#define DISPLAY_HEIGHT  768
+#define DISPLAY_HEIGHT  745
 #define DISPLAY_WIDTH   1366
 

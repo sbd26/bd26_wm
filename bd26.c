@@ -216,15 +216,14 @@ void establish_window_layout(bool restore_back){
       return;
     }
 
-    resize_client(rooT, (Vec2){.x = (float)DISPLAY_WIDTH / 2, .y = DISPLAY_HEIGHT - 35});
-    move_client(rooT, (Vec2){.x = 5, .y = 25});
+    resize_client(rooT, (Vec2){.x = (float)DISPLAY_WIDTH / 2, .y = DISPLAY_HEIGHT - 20});
+    move_client(rooT, (Vec2){.x = 5, .y = 30});
     rooT -> fullscreen = false;
-    float y_cordintae = 25;
+    float y_cordintae = 30;
 
     for (uint32_t i = 1; i < clients_count; i++){
-        resize_client(tmp_clients[i], (Vec2){.x = ((float)DISPLAY_WIDTH / 2) - 22, .y = ((float)DISPLAY_HEIGHT / (clients_count - 1)) - 35 });
+      resize_client(tmp_clients[i], (Vec2){.x = ((float)DISPLAY_WIDTH / 2) - 22, .y = ((float)DISPLAY_HEIGHT / (clients_count - 1) - 20)});
       move_client(tmp_clients[i], (Vec2){.x = ((float)DISPLAY_WIDTH / 2 + 15), .y = y_cordintae});
-      if (i == 1) y_cordintae = 20;
       y_cordintae += ((float) DISPLAY_HEIGHT / (clients_count - 1));
     }
   }
@@ -304,9 +303,9 @@ void set_fullscreen(Window win){
   wm.client_windows[current_workspace][client_index].fullscreen_revert_pos = (Vec2) {.x = attribs.x, .y = attribs.y};
   wm.client_windows[current_workspace][client_index].fullscreen_revert_size = (Vec2) {.x = attribs.width, .y = attribs.height};
 
-  resize_client(&wm.client_windows[current_workspace][client_index], (Vec2) {.x = (float) DISPLAY_WIDTH - 20, .y =  DISPLAY_HEIGHT - 35} );
+  resize_client(&wm.client_windows[current_workspace][client_index], (Vec2) {.x = (float) DISPLAY_WIDTH - 20, .y =  DISPLAY_HEIGHT - 20} );
 
-  move_client(&wm.client_windows[current_workspace][client_index], (Vec2){.x = 9.7, .y = 25});
+  move_client(&wm.client_windows[current_workspace][client_index], (Vec2){.x = 9.7, .y = 32.5});
   wm.client_windows[current_workspace][client_index].fullscreen = true;
 }
 
@@ -693,6 +692,7 @@ bd26 init_bd26(){
     err(1, "Can not create the connection");
   }
   tmp.root = DefaultRootWindow(tmp.display);
+  print_workspace_number();
   return tmp;
 }
 
