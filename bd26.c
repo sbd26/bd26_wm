@@ -139,10 +139,6 @@ void print_workspace_number(){
   system(command);
 }
 
-
-//failed start
-//failed end
-
 void swap(Client *client1, Client *client2){
   Client tmp = *client1;
   *client1 = *client2;

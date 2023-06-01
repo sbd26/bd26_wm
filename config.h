@@ -5,6 +5,8 @@
 
 #define MOD Mod4Mask
 
+#define SWAP  XK_S
+
 //APPLICATION
 #define CMD_BROWSER     "firefox &"
 #define CMD_TERMINAL    "st &"
@@ -40,7 +42,7 @@
 
 
 //WORKSPACE NAVIGATOR
-#define CHANGE_WORKSPACE XK_Tab //ok
+#define CHANGE_WORKSPACE XK_N //ok
 #define CHANGE_WORKSPACE_BACK XK_B //ok
 #define SWAP_WINDOW XK_A //ok
 #define SWAP_UP_DOWN XK_Z //ok
