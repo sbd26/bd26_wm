@@ -4,7 +4,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/extensions/Xcomposite.h>
-#include <X11/extensions/XTest.h>
+// #include <X11/extensions/XTest.h>
 #include <stdbool.h>
 #include <string.h>
 #include <err.h>
@@ -99,6 +99,7 @@ static void handle_unmap_notify(XUnmapEvent e);
 static void handle_key_press(XKeyEvent e);
 static void handle_button_press(XButtonEvent e);
 static void handle_motion_notify(XMotionEvent e);
+static void handle_poperty_notify(XEvent *e);
 //-----Other Functions start
 static void set_fullscreen(Window win);
 static void unset_fullscreen(Window win);
@@ -113,12 +114,56 @@ static void grab_window_key(Window win);
 static void establish_window_layout(bool restore_back);
 static void change_workspace();
 static void run_bd26();
-static void bd26_bar();
 static void change_focus_window(Window win);
+static void mini_app();
 //------other Functions end
 
 //tiling related function
 
+void mini_app(){
+  int width = DISPLAY_WIDTH / 3;
+  int row_counts = (wm.clients_count[current_workspace] % 3) ? 
+  (wm.clients_count[current_workspace] / 3 + 1) : wm.clients_count[current_workspace] / 3;
+  int height = DISPLAY_HEIGHT / row_counts;
+  int x = 10, y = 10;
+  int col_count = 3;
+  int counter = 0;
+  for (int i = 0; i < row_counts; i++){
+    for (int j = 0; j < col_count; j++){
+      if (counter == 0 || counter == 1 || counter == 2) y = 28;
+      move_client(&wm.client_windows[current_workspace][counter], (Vec2){.x = x, .y = y});
+      resize_client(&wm.client_windows[current_workspace][counter], (Vec2){.x = width - 10, .y = height - 28});
+      x += width + 10;
+      counter++;
+      if (counter % 3 == 0){
+        x = 10;
+        y += height;
+      }
+    }
+    if (counter > wm.clients_count[current_workspace]) break;
+  }
+}
+
+
+
+
+void handle_poperty_notify(XEvent * event){
+    Atom atom = XInternAtom(wm.display, "WM_CLASS", False);
+    if (event->xproperty.atom == atom) {
+        XTextProperty prop;
+        char **class_name;
+        int count;
+
+        XGetTextProperty(wm.display, event->xproperty.window, &prop, atom);
+        if (prop.nitems > 0 && prop.value) {
+            if (XmbTextPropertyToTextList(wm.display, &prop, &class_name, &count) == Success && count > 0) {
+                printf("Class name: %s\n", class_name[0]);
+                XFreeStringList(class_name);
+            }
+        }
+        XFree(prop.value);
+    }
+}
 
 void change_focus_window(Window win){
   uint32_t client_index = get_client_index(win);
@@ -149,15 +194,6 @@ void swap(Client *client1, Client *client2){
 
 
 
-void bd26_bar(){
-  wm.bar.win = XCreateSimpleWindow(wm.display, wm.root, 10, 10, DISPLAY_WIDTH - 20, 30, BORDER_WIDTH, FBORDER_COLOR, 0x10111c);
-  XSelectInput(wm.display, wm.bar.win, SubstructureNotifyMask | SubstructureRedirectMask);
-  XSetStandardProperties(wm.display, wm.bar.win, "bd26_bar", "bd26_bar", None, NULL, 0, NULL);
-  XMapWindow(wm.display, wm.bar.win);
-  XRaiseWindow(wm.display, wm.bar.win);
-}
-
-
 void change_workspace(){
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
     XUnmapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
@@ -170,7 +206,6 @@ void change_workspace(){
         XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win, RevertToPointerRoot, CurrentTime);
   }
   print_workspace_number();
-  // run_bd26();
 }
 
 void change_workspace_back(){
@@ -186,7 +221,6 @@ void change_workspace_back(){
       if (wm.client_windows[current_workspace][i].was_focused)
         XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win, RevertToPointerRoot, CurrentTime);
   }
-  // run_bd26();
   print_workspace_number();
 }
 
@@ -357,6 +391,7 @@ void window_frame(Window win){
     for (int i = 0; i < sizeof(make_window_floating) / sizeof(make_window_floating[0]); i++){
       if (strcmp(classhint.res_class, make_window_floating[i]) == 0){
         wm.client_windows[current_workspace][get_client_index(win_frame)].is_floating = true;
+        change_focus_window(win);
       }
     }
   }
@@ -405,7 +440,7 @@ void window_unframe(Window win){
 //choto khato functions start
 
 int32_t get_client_index(Window win){
-  for (int32_t i  = 0; i < wm.clients_count[current_workspace]; i++)
+  for (uint32_t i  = 0; i < wm.clients_count[current_workspace]; i++)
     if (wm.client_windows[current_workspace][i].win == win || wm.client_windows[current_workspace][i].frame == win)
       return i;
   return -1;
@@ -475,21 +510,20 @@ void handle_button_press(XButtonEvent e){
 }
 
 void handle_motion_notify(XMotionEvent e) {
-  Window frame = get_frame_window(e.window);
+  // Window frame = get_frame_window(e.window);
   Vec2 drag_pos = (Vec2){.x = (float)e.x_root, .y = (float)e.y_root};
   Vec2 delta_drag = (Vec2){.x = drag_pos.x - wm.cursor_start_pos.x,
                            .y = drag_pos.y - wm.cursor_start_pos.y};
   Client * tmp_client = &wm.client_windows[current_workspace][get_client_index(e.window)];
 
   if (e.state & Button1Mask) {
-    /* Pressed alt + left mouse */
+    /* Pressed MOD + left mouse */
 
     Vec2 drag_dest =
         (Vec2){.x = (float)(wm.cursor_start_frame_pos.x + delta_drag.x),
                .y = (float)(wm.cursor_start_frame_pos.y + delta_drag.y)};
       if (wm.client_windows[current_workspace][get_client_index(e.window)].fullscreen) {
         tmp_client -> fullscreen = false;
-        // XSetWindowBorderWidth(wm.display, tmp_client -> frame, BORDER_WIDTH);
       }
       change_focus_window(e.window);
       move_client(tmp_client, drag_dest);
@@ -498,7 +532,7 @@ void handle_motion_notify(XMotionEvent e) {
         establish_window_layout(false);
       }
   } else if (e.state & Button3Mask) {
-    /* Pressed alt + right mouse*/
+    /* Pressed MOD + right mouse*/
     if (wm.client_windows[current_workspace][get_client_index(e.window)].fullscreen) return;
 
     Vec2 resize_delta =
@@ -535,6 +569,7 @@ void grab_global_key(){
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, VOLUME_DOWN), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, VOLUME_MUTE), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CHANGE_WORKSPACE_BACK), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, MINI_APP), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
 }
 
 
@@ -617,6 +652,9 @@ void handle_key_press(XKeyEvent e){
       change_focus_window(wm.client_windows[current_workspace][client_index -1].win);
       }
   }
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, MINI_APP)){
+    mini_app();
+  }
 }
 
 
@@ -666,7 +704,10 @@ void run_bd26(){
       case ConfigureNotify:
         handle_configure_notify(e.xconfigure);break;
       //minor cases end
+      //
 
+      case PropertyNotify:
+        handle_poperty_notify(&e);break;
       case ConfigureRequest:
         handle_configure_request(e.xconfigurerequest);break;
       case MapRequest:
