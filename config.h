@@ -3,7 +3,7 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define CLIENT_WINDOW_CAP 256
 
-#define MOD Mod1Mask
+#define MOD Mod4Mask
 
 #define SWAP  XK_S
 
@@ -39,6 +39,7 @@
 #define KILL_WM         XK_C
 #define FULL_SCREEN     XK_F //ok
 #define MAKE_TILE    XK_T //ok
+#define MINI_APP  XK_U
 
 
 //WORKSPACE NAVIGATOR
