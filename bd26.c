@@ -26,16 +26,20 @@ const char *startup_commands[] = {
   "setxkbmap us &",
   "nitrogen --restore &",
   "dunst --config ~/.config/i3/dunstrc &",
-  "picom &" ,
+  // "picom &" ,
   "polybar &"
 };
 
 
 typedef enum {
   WINDOW_LAYOUT_TILED = 0,
-  WINDOW_LAYOUT_TILED_VERTICAL = 1
+  WINDOW_LAYOUT_TILED_VERTICAL = 1,
 } WindowLayout;
 
+typedef enum {
+  MINI_STATE = 0,
+  NORMAL_STATE = 1
+} CurrentState;
 
 typedef struct{
   Window win;
@@ -67,13 +71,14 @@ typedef struct {
   bool running;
   uint8_t window_gap;
   
-  WindowLayout current_layout;
+  WindowLayout current_layout[WORKSPACE];
   Client client_windows[WORKSPACE][CLIENT_WINDOW_CAP];
   uint32_t clients_count[WORKSPACE];
   Vec2 cursor_start_pos, cursor_start_frame_pos, cursor_start_frame_size;
   GC gc;
   Bar bar;
   int screen;
+  CurrentState currentstate[WORKSPACE];
 }bd26;
 
 static bool wm_detected = false;
@@ -121,6 +126,12 @@ static void mini_app();
 //tiling related function
 
 void mini_app(){
+  if (wm.clients_count[current_workspace] < 3){
+    wm.currentstate[current_workspace] = NORMAL_STATE;
+    return;
+  }
+  wm.currentstate[current_workspace] = MINI_STATE;
+  printf("TOTAL CIENTS IS %d \n\n\n", wm.clients_count[current_workspace]);
   int width = DISPLAY_WIDTH / 3;
   int row_counts = (wm.clients_count[current_workspace] % 3) ? 
   (wm.clients_count[current_workspace] / 3 + 1) : wm.clients_count[current_workspace] / 3;
@@ -242,7 +253,7 @@ void establish_window_layout(bool restore_back){
   }
 
   if (clients_count == 0)return;
-  if (wm.current_layout == WINDOW_LAYOUT_TILED){
+  if (wm.current_layout[current_workspace] == WINDOW_LAYOUT_TILED){
     Client * rooT = tmp_clients[0];
 
     if (clients_count == 1){
@@ -283,7 +294,7 @@ void establish_window_layout_bak(){
 
   Client *master = &wm.client_windows[current_workspace][master_index];
 
-  if (wm.current_layout == WINDOW_LAYOUT_TILED){
+  if (wm.current_layout[current_workspace] == WINDOW_LAYOUT_TILED){
     if (clients_on_monitor == 1){
       set_fullscreen(master->frame);
       return;
@@ -397,8 +408,9 @@ void window_frame(Window win){
   }
   XFree(classhint.res_class);
 
-
-  establish_window_layout(false);
+  if (wm.currentstate[current_workspace] == MINI_STATE) mini_app();
+  else
+    establish_window_layout(false);
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
     wm.client_windows[current_workspace][i].was_focused = false;
   }
@@ -406,7 +418,7 @@ void window_frame(Window win){
 }
 
 void window_unframe(Window win){
-  const int32_t client_index = get_client_index(win);
+  int32_t client_index = get_client_index(win);
 
   if (client_index == -1) {printf("Returning from unframe");return;}
   const Window frame_window = wm.client_windows[current_workspace][client_index].frame;
@@ -415,24 +427,25 @@ void window_unframe(Window win){
   XReparentWindow(wm.display, win, wm.root, 0, 0);
   XUnmapWindow(wm.display, frame_window);
 
-  for (uint64_t i = client_index; i < wm.clients_count[current_workspace] - 1; i++)
+  for (uint32_t i = client_index; i < wm.clients_count[current_workspace] - 1; i++)
   {
+    printf("SWAPPING\n\n\n\n");
+    printf("CLIENT INDEX IS %d : %d\n\n\n\n", wm.clients_count[current_workspace] ,i);
     wm.client_windows[current_workspace][i] = wm.client_windows[current_workspace][i + 1];
   }
-  wm.clients_count[current_workspace] --;
-
-  if(wm.clients_count[current_workspace] > 0){
-    uint32_t i;
-  for ( i = 0; i < wm.clients_count[current_workspace ] - 1; i++){
-    XSetWindowBorder(wm.display, wm.client_windows[current_workspace][i].frame, UBORDER_COLOR);
+  wm.clients_count[current_workspace]--;
+  printf("CLIENT INDEX IS %d\n\n\n\n", wm.clients_count[current_workspace]);
+  if (wm.clients_count[current_workspace] != 0){
+    if (client_index == 0) client_index = 1;
+    change_focus_window(wm.client_windows[current_workspace][client_index - 1].win);
   }
-    XSetWindowBorder(wm.display, wm.client_windows[current_workspace][i].frame, FBORDER_COLOR);
-    XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win, RevertToPointerRoot, CurrentTime);
-  }
-  else 
-    XSetInputFocus(wm.display, wm.root, RevertToPointerRoot, CurrentTime);
 
-  establish_window_layout(false);
+  if (wm.currentstate[current_workspace] == NORMAL_STATE || wm.clients_count[current_workspace] < 3){
+    establish_window_layout(false);
+    wm.currentstate[current_workspace] = NORMAL_STATE;
+  }
+  else
+    mini_app();
 }
 //others but dorakri end
 
@@ -505,8 +518,16 @@ void handle_button_press(XButtonEvent e){
   wm.cursor_start_frame_pos = (Vec2){.x = (float)x, .y = (float)y};
   wm.cursor_start_frame_size = (Vec2){.x = (float)width, .y = (float)height};
 
-  XRaiseWindow(wm.display, wm.client_windows[current_workspace][get_client_index(e.window)].frame);
+  XRaiseWindow(wm.display, wm.client_windows[current_workspace][get_client_index(e.window)].win);
   XSetInputFocus(wm.display, e.window, RevertToPointerRoot, CurrentTime);
+
+  if (e.button == Button1 && wm.currentstate[current_workspace] == MINI_STATE && e.window != wm.root){
+    if (e.state & ShiftMask){
+      set_fullscreen(e.window);
+      change_focus_window(e.window);
+      wm.currentstate[current_workspace] = NORMAL_STATE;
+    }
+  }
 }
 
 void handle_motion_notify(XMotionEvent e) {
@@ -529,7 +550,8 @@ void handle_motion_notify(XMotionEvent e) {
       move_client(tmp_client, drag_dest);
       if (!tmp_client -> is_floating){
         tmp_client -> is_floating = true;
-        establish_window_layout(false);
+        if (wm.currentstate[current_workspace] == MINI_STATE) mini_app();
+        else establish_window_layout(false);
       }
   } else if (e.state & Button3Mask) {
     /* Pressed MOD + right mouse*/
@@ -576,12 +598,14 @@ void grab_global_key(){
 void grab_window_key(Window win){
   XGrabButton(wm.display, Button1, MOD, win, false, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
   XGrabButton(wm.display, Button3, MOD, win, false, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+  XGrabButton(wm.display, Button1, ShiftMask, win, false, ButtonPressMask | ButtonReleaseMask, GrabModeAsync, GrabModeAsync, None, None);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CLOSE_WINDOW), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, FULL_SCREEN), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, SWAP_WINDOW), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, SWAP_UP_DOWN), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, NAVIGATE_UP), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, NAVIGATE_DOWN), MOD, win, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, MAX_MINI_APP), MOD, win, false, GrabModeAsync, GrabModeAsync);
 
 }
 
@@ -611,7 +635,9 @@ void handle_key_press(XKeyEvent e){
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, VOLUME_UP)) system(CMD_VOLUME_UP);
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, VOLUME_DOWN)) system(CMD_VOLUME_DOWN);
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, VOLUME_MUTE)) system(CMD_VOLUME_MUTE);
-  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, MAKE_TILE)) establish_window_layout(true);
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, MAKE_TILE)) {establish_window_layout(true);
+    wm.currentstate[current_workspace] = NORMAL_STATE;
+  }
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, CHANGE_WORKSPACE)) change_workspace();
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, CHANGE_WORKSPACE_BACK)) change_workspace_back();
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, SWAP_WINDOW)){
@@ -653,7 +679,16 @@ void handle_key_press(XKeyEvent e){
       }
   }
   else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, MINI_APP)){
-    mini_app();
+    if (wm.currentstate[current_workspace] == MINI_STATE) {
+      wm.currentstate[current_workspace] = NORMAL_STATE;
+      establish_window_layout(false);
+    }
+    else
+      mini_app();
+  }else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, MAX_MINI_APP)){
+    wm.currentstate[current_workspace] = NORMAL_STATE;
+    set_fullscreen(e.window);
+    change_focus_window(e.window);
   }
 }
 
@@ -666,9 +701,13 @@ void run_bd26(){
   wm.cursor_start_frame_size = (Vec2){.x = 0.0f, .y = 0.0f};
   wm.cursor_start_frame_pos = (Vec2){.x = 0.0f, .y = 0.0f};
   wm.cursor_start_pos = (Vec2){.x = 0.0f, .y = 0.0f};
-  wm.current_layout = WINDOW_LAYOUT_TILED;
+  wm.current_layout[current_workspace] = WINDOW_LAYOUT_TILED;
   wm.window_gap = 10;
   wm.running = true;
+  for (int i = 0; i < WORKSPACE; i++){
+    printf("Makint the state to normal");
+    wm.currentstate[i] = NORMAL_STATE;
+  }
   XSelectInput(wm.display, wm.root, SubstructureRedirectMask | SubstructureNotifyMask | KeyPressMask | ButtonPressMask);
   XSync(wm.display, false);
 
@@ -682,8 +721,7 @@ void run_bd26(){
   XDefineCursor(wm.display, wm.root, cursor);
   XSetErrorHandler(handle_x_error);
 
-  grab_global_key();
-  //Dispatch Event Start
+  grab_global_key(); //Dispatch Event Start
   while (wm.running) {
     XEvent e;
     XNextEvent(wm.display, &e);
