@@ -47,9 +47,8 @@ sudo cp -f bd26.desktop /usr/share/applications
 
 
 echo -e "${YELLOW} Installing Nerd Font for Polybar"
-#!/bin/bash
 
-directory="~/.fonts/"
+directory="~/.fonts"
 
 if [ -d "$directory" ]; then
   echo "Directory exists."
