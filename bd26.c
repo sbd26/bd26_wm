@@ -4,7 +4,6 @@
 #include <X11/Xutil.h>
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/extensions/Xcomposite.h>
-// #include <X11/extensions/XTest.h>
 #include <stdbool.h>
 #include <string.h>
 #include <err.h>
@@ -26,7 +25,7 @@ const char *startup_commands[] = {
   "setxkbmap us &",
   "nitrogen --restore &",
   "dunst --config ~/.config/i3/dunstrc &",
-  // "picom &" ,
+  "picom &" ,
   "polybar &"
 };
 
@@ -121,9 +120,40 @@ static void change_workspace();
 static void run_bd26();
 static void change_focus_window(Window win);
 static void mini_app();
+static void change_active_workspace();
+static void print_workspace_number();
 //------other Functions end
 
 //tiling related function
+
+
+void change_active_window(){
+  int active_workspace = current_workspace + 1;
+
+  for (int i = 0; i < WORKSPACE; i++){
+    active_workspace %= 4;
+    if (wm.clients_count[active_workspace] != 0){
+      active_workspace = active_workspace;
+      break;
+    }
+    active_workspace++;
+  }
+
+  if (active_workspace == current_workspace) return;
+  
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
+    XUnmapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
+  }
+    for (uint32_t i = 0; i < wm.clients_count[active_workspace]; i++){
+    XMapWindow(wm.display, wm.client_windows[active_workspace][i].frame);
+      if (wm.client_windows[active_workspace][i].was_focused)
+        XSetInputFocus(wm.display, wm.client_windows[active_workspace][i].win, RevertToPointerRoot, CurrentTime);
+  }
+  current_workspace = active_workspace;
+  print_workspace_number();
+}
+
+
 
 void mini_app(){
   if (wm.clients_count[current_workspace] < 3){
@@ -131,19 +161,18 @@ void mini_app(){
     return;
   }
   wm.currentstate[current_workspace] = MINI_STATE;
-  printf("TOTAL CIENTS IS %d \n\n\n", wm.clients_count[current_workspace]);
   int width = DISPLAY_WIDTH / 3;
   int row_counts = (wm.clients_count[current_workspace] % 3) ? 
   (wm.clients_count[current_workspace] / 3 + 1) : wm.clients_count[current_workspace] / 3;
   int height = DISPLAY_HEIGHT / row_counts;
   int x = 10, y = 10;
   int col_count = 3;
-  int counter = 0;
+  uint32_t counter = 0;
   for (int i = 0; i < row_counts; i++){
     for (int j = 0; j < col_count; j++){
       if (counter == 0 || counter == 1 || counter == 2) y = 28;
       move_client(&wm.client_windows[current_workspace][counter], (Vec2){.x = x, .y = y});
-      resize_client(&wm.client_windows[current_workspace][counter], (Vec2){.x = width - 10, .y = height - 28});
+      resize_client(&wm.client_windows[current_workspace][counter], (Vec2){.x = width - 18, .y = height - 28});
       x += width + 10;
       counter++;
       if (counter % 3 == 0){
@@ -201,8 +230,6 @@ void swap(Client *client1, Client *client2){
   *client2 = tmp;
   establish_window_layout(false);
 }
-
-
 
 
 void change_workspace(){
@@ -336,7 +363,6 @@ void move_client(Client *client, Vec2 pos){
 
 
 void set_fullscreen(Window win){
-
   if (win == wm.root) return;
 
   uint32_t client_index = get_client_index(win);
@@ -592,6 +618,7 @@ void grab_global_key(){
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, VOLUME_MUTE), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CHANGE_WORKSPACE_BACK), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, MINI_APP), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, CHANGE_ACTIVE_WORKSPACE), MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
 }
 
 
@@ -657,7 +684,7 @@ void handle_key_press(XKeyEvent e){
       }
     }
   }
-  else if (e.state & MOD | ShiftMask && e.keycode == XKeysymToKeycode(wm.display, SWAP_UP_DOWN)){
+  else if (e.state & (MOD | ShiftMask) && e.keycode == XKeysymToKeycode(wm.display, SWAP_UP_DOWN)){
     if (wm.clients_count[current_workspace] >= 3){
       uint32_t tmp_index = get_client_index(e.window);
       if (tmp_index == 1) tmp_index = 2;
@@ -689,6 +716,8 @@ void handle_key_press(XKeyEvent e){
     wm.currentstate[current_workspace] = NORMAL_STATE;
     set_fullscreen(e.window);
     change_focus_window(e.window);
+  }else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, CHANGE_ACTIVE_WORKSPACE)){
+    change_active_window();
   }
 }
 
