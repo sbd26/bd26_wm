@@ -1,0 +1,11 @@
+[Desktop Entry]
+Encoding=UTF-8
+Type=Application
+Name=bd26
+Comment= A simple tilling window manager
+Exec=bd26
+Icon=bd26
+X-GNOME-WMName=bd26
+X-GNOME-Autostart-Phase=WindowManager
+X-GNOME-Provides=windowmanager
+X-GNOME-Autostart-Notify=false
