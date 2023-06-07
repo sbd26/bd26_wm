@@ -1,7 +1,8 @@
 install:
-	gcc -lX11 -lXcursor -O3 -ffast-math -Wall -Wextra -lXcomposite -lXft -lfontconfig -I /usr/include/freetype2 bd26.c -o bd26 
-	cp bd26 /usr/bin/bd26
+	gcc -lX11 -lXcursor -lXft -lfontconfig -I/usr/include/freetype2 -O3 -ffast-math -Wall -Wextra -lXcomposite bd26.c -o bd26_beta 
+	cp bd26_beta /usr/bin/bd26_beta
+	cp bar_util.sh /bin
 
 clean:
-	rm -f bd26
-	rm -f /usr/bin/bd26
+	rm -f bd26_beta
+	rm -f /usr/bin/bd26_beta

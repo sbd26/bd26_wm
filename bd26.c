@@ -3,13 +3,14 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xcursor/Xcursor.h>
+#include <X11/Xft/Xft.h>
 #include <X11/extensions/Xcomposite.h>
 #include <stdbool.h>
 #include <string.h>
 #include <err.h>
 #include "config.h"
+#include "struct.h"
 
-#define WORKSPACE 4
 
 int8_t current_workspace = 0;
 
@@ -28,57 +29,6 @@ const char *startup_commands[] = {
   "picom &" ,
   "polybar &"
 };
-
-
-typedef enum {
-  WINDOW_LAYOUT_TILED = 0,
-  WINDOW_LAYOUT_TILED_VERTICAL = 1,
-} WindowLayout;
-
-typedef enum {
-  MINI_STATE = 0,
-  NORMAL_STATE = 1
-} CurrentState;
-
-typedef struct{
-  Window win;
-}Bar;
-
-typedef struct {
-  float x, y;
-} Vec2;
-
-typedef struct {
-  Window title_bar;
-}Decoration;
-
-typedef struct {
-  Window win;
-  Window frame;
-  bool fullscreen;
-  Vec2 fullscreen_revert_size;
-  Vec2 fullscreen_revert_pos;
-  bool is_floating;
-  Decoration decoration;
-  bool was_focused;
-} Client;
-
-
-typedef struct {
-  Display *display;
-  Window root;
-  bool running;
-  uint8_t window_gap;
-  
-  WindowLayout current_layout[WORKSPACE];
-  Client client_windows[WORKSPACE][CLIENT_WINDOW_CAP];
-  uint32_t clients_count[WORKSPACE];
-  Vec2 cursor_start_pos, cursor_start_frame_pos, cursor_start_frame_size;
-  GC gc;
-  Bar bar;
-  int screen;
-  CurrentState currentstate[WORKSPACE];
-}bd26;
 
 static bool wm_detected = false;
 static bd26 wm;
@@ -125,6 +75,31 @@ static void print_workspace_number();
 //------other Functions end
 
 //tiling related function
+
+
+
+FontStruct font_create(const char *fontname, const char *fontcolor,
+                       Window win) {
+  FontStruct fs;
+  XftFont *xft_font = XftFontOpenName(wm.display, current_workspace, fontname);
+  XftDraw *xft_draw =
+      XftDrawCreate(wm.display, win, DefaultVisual(wm.display, current_workspace),
+                    DefaultColormap(wm.display, current_workspace));
+  XftColor xft_font_color;
+  XftColorAllocName(wm.display, DefaultVisual(wm.display, 0),
+                    DefaultColormap(wm.display, 0), fontcolor, &xft_font_color);
+
+  fs.font = xft_font;
+  fs.draw = xft_draw;
+  fs.color = xft_font_color;
+  return fs;
+}
+
+
+void draw_str(const char *str, FontStruct font, int x, int y) {
+  XftDrawStringUtf8(font.draw, &font.color, font.font, x, y, (XftChar8 *)str,
+                    strlen(str));
+}
 
 
 void change_active_window(){
@@ -220,7 +195,7 @@ void change_focus_window(Window win){
 
 void print_workspace_number(){
   char command[50];
-  sprintf(command, "echo %d > ~/test.txt", current_workspace);
+  sprintf(command, "echo %d > ~/.cache/bd26_util.txt", current_workspace);
   system(command);
 }
 
@@ -353,6 +328,7 @@ void resize_client(Client *client , Vec2 sz) {
 
   XResizeWindow(wm.display, client -> win, sz.x, sz.y);
   XResizeWindow(wm.display, client -> frame, sz.x, sz.y);
+  XResizeWindow(wm.display, client -> decoration.title_bar, sz.x, TITLE_BAR_HEIGHT);
   XRaiseWindow(wm.display, client -> frame);
 }
 
@@ -416,6 +392,8 @@ void window_frame(Window win){
   XSelectInput(wm.display, win_frame, SubstructureNotifyMask | SubstructureRedirectMask);
   XAddToSaveSet(wm.display, win_frame);
   XReparentWindow(wm.display, win, win_frame, 0, 0);
+  XResizeWindow(wm.display, win, attribs.width, attribs.height - TITLE_BAR_HEIGHT);
+  XMoveWindow(wm.display, win, 0, TITLE_BAR_HEIGHT);
   XMapWindow(wm.display, win_frame);
   XSetInputFocus(wm.display, win, RevertToPointerRoot, CurrentTime);
 
@@ -441,6 +419,56 @@ void window_frame(Window win){
     wm.client_windows[current_workspace][i].was_focused = false;
   }
   wm.client_windows[current_workspace][get_client_index(win_frame)].was_focused = true;
+
+
+  int32_t client_index = get_client_index(win);
+  Client * current_client = &wm.client_windows[current_workspace][client_index];
+
+  //toy window 
+  Window helper_window = XCreateSimpleWindow(wm.display, wm.root, 50, 200, attribs.width, attribs.height, BORDER_WIDTH, FBORDER_COLOR, BG_COLOR);
+
+
+  XWindowAttributes attribs_frame;
+  XGetWindowAttributes(wm.display, win_frame, &attribs_frame);
+
+  //Creating The title Bar
+  current_client->decoration.title_bar = XCreateSimpleWindow(wm.display, helper_window, 0, 0, attribs_frame.width, TITLE_BAR_HEIGHT, 0, 0, TITLE_BAR_BG_COLOR);
+  XSelectInput(wm.display, current_client->decoration.title_bar, SubstructureRedirectMask | SubstructureNotifyMask);
+  XReparentWindow(wm.display, current_client->decoration.title_bar, win_frame, 0, 0);
+  XMapWindow(wm.display, current_client->decoration.title_bar);
+
+
+
+  //Creating the Close Window
+  current_client->decoration.close_button = XCreateSimpleWindow(wm.display, helper_window, 0, 0, 40, 30, 0, FBORDER_COLOR, TITLE_BAR_BG_COLOR);
+  XSelectInput(wm.display, current_client->decoration.close_button, SubstructureNotifyMask | SubstructureRedirectMask | ButtonPressMask);
+  XReparentWindow(wm.display, current_client->decoration.close_button, win_frame, 0, 0);
+  XMapWindow(wm.display, current_client->decoration.close_button);
+
+
+
+  //Creating The Maximize window
+  current_client->decoration.maximize_button = XCreateSimpleWindow(wm.display, helper_window, 0, 0, 40, 30, 0, FBORDER_COLOR, TITLE_BAR_BG_COLOR );
+  XSelectInput(wm.display, current_client->decoration.maximize_button, SubstructureNotifyMask | SubstructureRedirectMask | ButtonPressMask);
+  XReparentWindow(wm.display, current_client->decoration.maximize_button, win_frame, 20, 0);
+  XMapWindow(wm.display, current_client->decoration.maximize_button);
+
+  //Font Config
+  current_client->decoration.maximize_button_font = font_create(FONT, MAXIMIZE_ICON_COLOR, current_client->decoration.maximize_button);
+  current_client->decoration.close_button_font = font_create(FONT, CLOSE_ICON_COLOR, current_client->decoration.close_button);
+  current_client->decoration.title_bar_font = font_create(FONT, DECORATION_FONT_COLOR, current_client->decoration.title_bar);
+
+  XGlyphInfo extents;
+  //close button
+  XClearWindow(wm.display, current_client->decoration.close_button);
+  XftTextExtents16(wm.display, current_client->decoration.close_button_font.font, (FcChar16 *)MAXIMIZE_ICON, strlen(MAXIMIZE_ICON), &extents);
+  draw_str(MAXIMIZE_ICON, current_client->decoration.close_button_font, (ICON_SIZE / 2.0f) - (extents.xOff / 2.0f), (30 / 2.0f) +(extents.height / 2.0f));
+
+
+  //maximize icon
+  XClearWindow(wm.display, current_client->decoration.maximize_button);
+  XftTextExtents16(wm.display, current_client->decoration.maximize_button_font.font, (FcChar16 *)MAXIMIZE_ICON, strlen(MAXIMIZE_ICON), &extents);
+  draw_str(MAXIMIZE_ICON, current_client->decoration.maximize_button_font, (ICON_SIZE / 2.0f) - (extents.xOff / 2.0f), (30 / 2.0f) +(extents.height / 2.0f));
 }
 
 void window_unframe(Window win){
@@ -554,6 +582,38 @@ void handle_button_press(XButtonEvent e){
       wm.currentstate[current_workspace] = NORMAL_STATE;
     }
   }
+
+
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
+    if(e.window == wm.client_windows[current_workspace][i].decoration.maximize_button){
+      printf("Fullscreen Pressed\n\n\n");
+      if (wm.client_windows[current_workspace][i].fullscreen)
+      {unset_fullscreen(wm.client_windows[current_workspace][i].frame);}
+      else
+      {set_fullscreen(wm.client_windows[current_workspace][i].frame);}
+      break;
+    }
+  }
+
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
+    if(e.window == wm.client_windows[current_workspace][i].decoration.close_button){
+      printf("Close button Pressed\n\n\n\n");
+
+        XEvent msg;
+        memset(&msg, 0, sizeof(msg));
+        msg.xclient.type = ClientMessage;
+        msg.xclient.message_type =
+            XInternAtom(wm.display, "WM_PROTOCOLS", false);
+        msg.xclient.window = e.window;
+        msg.xclient.format = 32;
+        msg.xclient.data.l[0] =
+            XInternAtom(wm.display, "WM_DELETE_WINDOW", false);
+        XSendEvent(wm.display, e.window, false, 0, &msg);
+        window_unframe(e.window);
+        break;
+    }
+  }
+
 }
 
 void handle_motion_notify(XMotionEvent e) {
@@ -633,6 +693,7 @@ void grab_window_key(Window win){
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, NAVIGATE_UP), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, NAVIGATE_DOWN), MOD, win, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, MAX_MINI_APP), MOD, win, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, MOVE_WINDOW_NEXT), MOD, win, false, GrabModeAsync, GrabModeAsync);
 
 }
 
@@ -718,6 +779,10 @@ void handle_key_press(XKeyEvent e){
     change_focus_window(e.window);
   }else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, CHANGE_ACTIVE_WORKSPACE)){
     change_active_window();
+  }else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, MOVE_WINDOW_NEXT)){
+    XUnmapWindow(wm.display, wm.client_windows[current_workspace][get_client_index(e.window)].frame);
+    current_workspace++;
+    window_frame(e.window);
   }
 }
 
