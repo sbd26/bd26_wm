@@ -2,8 +2,7 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define CLIENT_WINDOW_CAP 256
-
-#define MOD Mod4Mask
+#define MOD Mod1Mask
 
 #define SWAP  XK_S
 
@@ -40,13 +39,17 @@
 #define FULL_SCREEN     XK_F //ok
 #define MAKE_TILE    XK_T //ok
 #define MINI_APP  XK_U
+#define MAX_MINI_APP XK_I
+// #define NAVIGATE_MAX_APP XK_L
 
 
 //WORKSPACE NAVIGATOR
 #define CHANGE_WORKSPACE XK_N //ok
 #define CHANGE_WORKSPACE_BACK XK_B //ok
+#define CHANGE_ACTIVE_WORKSPACE XK_P
 #define SWAP_WINDOW XK_A //ok
 #define SWAP_UP_DOWN XK_Z //ok
+#define MOVE_WINDOW_NEXT XK_H
 
 
 
@@ -58,4 +61,27 @@
 
 #define DISPLAY_HEIGHT  745
 #define DISPLAY_WIDTH   1366
+#define WORKSPACE 4
+
+
+
+//DECORATION RELATED
+
+
+#define FONT                                    "JetBrains Mono Nerd Font:size=15:style=bold"
+#define FONT_SIZE                               15
+#define FONT_COLOR                              "#f9b424"
+#define DECORATION_FONT_COLOR                   "#ff0000"
+
+#define MAXIMIZE_ICON                ""
+#define MAXIMIZE_ICON_COLOR          "#f9b424"
+
+#define TITLE_BAR_BG_COLOR  0x302d35
+
+#define CLOSE_ICON ""
+#define CLOSE_ICON_COLOR "#fb5246"
+
+#define ICON_SIZE 40
+#define TITLE_BAR_HEIGHT 30
+
 
