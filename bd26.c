@@ -469,6 +469,25 @@ void window_frame(Window win){
   XClearWindow(wm.display, current_client->decoration.maximize_button);
   XftTextExtents16(wm.display, current_client->decoration.maximize_button_font.font, (FcChar16 *)MAXIMIZE_ICON, strlen(MAXIMIZE_ICON), &extents);
   draw_str(MAXIMIZE_ICON, current_client->decoration.maximize_button_font, (ICON_SIZE / 2.0f) - (extents.xOff / 2.0f), (30 / 2.0f) +(extents.height / 2.0f));
+
+
+
+  //Show the window title
+  XClearWindow(wm.display, current_client->decoration.title_bar);
+  char * window_name = NULL;
+  XFetchName(wm.display, current_client->win, &window_name);
+  if (window_name != NULL){
+    XGlyphInfo extents;
+    XftTextExtents16(wm.display, current_client->decoration.title_bar_font.font, (FcChar16 *)window_name, strlen(window_name), &extents);
+    XFillRectangle(wm.display, current_client->decoration.title_bar, DefaultGC(wm.display, wm.screen), 0, 0, extents.xOff, TITLE_BAR_HEIGHT);
+    draw_str(window_name, current_client->decoration.title_bar_font, 60, (TITLE_BAR_HEIGHT / 2.0f) + (extents.height / 2.0f));
+    XFree(window_name);
+    printf("Hello\n\n\n");
+  }
+
+
+
+
 }
 
 void window_unframe(Window win){
