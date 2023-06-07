@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <X11/Xft/Xft.h>
 
 
 typedef enum {

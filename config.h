@@ -2,7 +2,7 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define CLIENT_WINDOW_CAP 256
-#define MOD Mod1Mask
+#define MOD Mod4Mask
 
 #define SWAP  XK_S
 
@@ -15,7 +15,7 @@
 #define CMD_VOLUME_MUTE "pactl set-sink-mute   @DEFAULT_SINK@ toggle"
 
 //WINDOW RELATED 
-#define BORDER_WIDTH  2
+#define BORDER_WIDTH  0
 #define FBORDER_COLOR 0x8aadf4
 #define UBORDER_COLOR 0x2E3440
 #define DESKTOP_COUNT 9
@@ -68,7 +68,7 @@
 //DECORATION RELATED
 
 
-#define FONT                                    "JetBrains Mono Nerd Font:size=15:style=bold"
+#define FONT                                    "JetBrains Mono Nerd Font:size=10:style=bold"
 #define FONT_SIZE                               15
 #define FONT_COLOR                              "#f9b424"
 #define DECORATION_FONT_COLOR                   "#ff0000"
@@ -81,7 +81,7 @@
 #define CLOSE_ICON ""
 #define CLOSE_ICON_COLOR "#fb5246"
 
-#define ICON_SIZE 40
-#define TITLE_BAR_HEIGHT 30
-
+#define ICON_SIZE 20
+#define TITLE_BAR_HEIGHT 20
+#define BUTTON_GAPS 20
 
