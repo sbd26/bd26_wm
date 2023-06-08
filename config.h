@@ -4,7 +4,6 @@
 #define CLIENT_WINDOW_CAP 256
 #define MOD Mod4Mask
 
-#define SWAP  XK_S
 
 //APPLICATION
 #define CMD_BROWSER     "firefox &"
@@ -15,10 +14,9 @@
 #define CMD_VOLUME_MUTE "pactl set-sink-mute   @DEFAULT_SINK@ toggle"
 
 //WINDOW RELATED 
-#define BORDER_WIDTH  0
+#define BORDER_WIDTH  2
 #define FBORDER_COLOR 0x8aadf4
 #define UBORDER_COLOR 0x2E3440
-#define DESKTOP_COUNT 9
 #define BG_COLOR      0xffffff
 
 
@@ -66,8 +64,6 @@
 
 
 //DECORATION RELATED
-
-
 #define FONT                                    "JetBrains Mono Nerd Font:size=10:style=bold"
 #define FONT_SIZE                               15
 #define FONT_COLOR                              "#f9b424"
@@ -85,3 +81,5 @@
 #define TITLE_BAR_HEIGHT 20
 #define BUTTON_GAPS 20
 
+
+#define TEST XK_Y
