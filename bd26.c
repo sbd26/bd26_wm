@@ -77,9 +77,21 @@ static void print_workspace_number();
 static void title_bar_stuff(Client *current_client);
 static FontStruct font_create(const char *fontname, const char *fontcolor,
                               Window win);
+static void show_all_workspaces();
 //------other Functions end
 
 // tiling related function
+
+void show_all_workspaces(){
+  Window win = XCreateSimpleWindow(wm.display, wm.root, 0, 100, DISPLAY_WIDTH, 400, BORDER_WIDTH, FBORDER_COLOR, BG_COLOR);
+  XMapWindow(wm.display, win);
+  XRaiseWindow(wm.display, win);
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
+    XUnmapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
+  }
+}
+
+
 
 void draw_str(const char *str, FontStruct font, int x, int y) {
   XftDrawStringUtf8(font.draw, &font.color, font.font, x, y, (XftChar8 *)str,
@@ -793,6 +805,8 @@ void grab_global_key() {
            false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CHANGE_ACTIVE_WORKSPACE),
            MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, TEST),
+           MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
 }
 
 void grab_window_key(Window win) {
@@ -937,6 +951,8 @@ void handle_key_press(XKeyEvent e) {
         wm.client_windows[current_workspace][get_client_index(e.window)].frame);
     current_workspace++;
     window_frame(e.window);
+  }else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, TEST)){
+    show_all_workspaces();
   }
 }
 
