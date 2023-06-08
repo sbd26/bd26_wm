@@ -19,10 +19,12 @@ const char *make_window_floating[] = {
     "Alacritty",
 };
 
-const char *startup_commands[] = {"killall dunst &", "setxkbmap us &",
+const char *startup_commands[] = {"killall dunst &",
+                                  "setxkbmap us &",
                                   "nitrogen --restore &",
                                   "dunst --config ~/.config/i3/dunstrc &",
-                                  "picom &", "polybar &"};
+                                  "picom &",
+                                  "polybar &"};
 
 static bool wm_detected = false;
 static bd26 wm;
@@ -85,32 +87,33 @@ void draw_str(const char *str, FontStruct font, int x, int y) {
 }
 
 void title_bar_stuff(Client *current_client) {
-  XWindowAttributes attribs;
-  XGetWindowAttributes(wm.display, current_client->frame, &attribs);
-  XClearWindow(wm.display, current_client->decoration.title_bar);
-  char *window_name = NULL;
-  XFetchName(wm.display, current_client->win, &window_name);
-  if (window_name != NULL) {
-    XGlyphInfo extents;
-    XSetForeground(wm.display, DefaultGC(wm.display, 0), TITLE_BAR_BG_COLOR);
-    XftTextExtents16(wm.display, current_client->decoration.title_bar_font.font,
-                     (FcChar16 *)window_name, strlen(window_name), &extents);
-    XFillRectangle(wm.display, current_client->decoration.title_bar,
-                   DefaultGC(wm.display, 0), 0, 0, extents.xOff,
-                   TITLE_BAR_HEIGHT);
-    draw_str(window_name, current_client->decoration.title_bar_font,
-             attribs.width / 2.0f, 15);
-    XFree(window_name);
-  }
+  XGlyphInfo extents;
+  // close button
+  XClearWindow(wm.display, current_client->decoration.close_button);
+  XftTextExtents16(wm.display,
+                   current_client->decoration.close_button_font.font,
+                   (FcChar16 *)MAXIMIZE_ICON, strlen(MAXIMIZE_ICON), &extents);
+  draw_str(MAXIMIZE_ICON, current_client->decoration.close_button_font,
+           (ICON_SIZE / 2.0f) - (extents.xOff / 4.0f),
+           ((ICON_SIZE - 10) / 2.0f) + (extents.height / 1.25f));
+
+  // maximize icon
+  XClearWindow(wm.display, current_client->decoration.maximize_button);
+  XftTextExtents16(wm.display,
+                   current_client->decoration.maximize_button_font.font,
+                   (FcChar16 *)MAXIMIZE_ICON, strlen(MAXIMIZE_ICON), &extents);
+  draw_str(MAXIMIZE_ICON, current_client->decoration.maximize_button_font,
+           (ICON_SIZE / 2.0f) - (extents.xOff / 4.0f),
+           ((ICON_SIZE - 10) / 2.0f) + (extents.height / 1.25f));
 }
 
 FontStruct font_create(const char *fontname, const char *fontcolor,
                        Window win) {
   FontStruct fs;
-  XftFont *xft_font = XftFontOpenName(wm.display, current_workspace, fontname);
+  XftFont *xft_font = XftFontOpenName(wm.display, 0, fontname);
   XftDraw *xft_draw = XftDrawCreate(
-      wm.display, win, DefaultVisual(wm.display, current_workspace),
-      DefaultColormap(wm.display, current_workspace));
+      wm.display, win, DefaultVisual(wm.display, 0),
+      DefaultColormap(wm.display, 0));
   XftColor xft_font_color;
   XftColorAllocName(wm.display, DefaultVisual(wm.display, 0),
                     DefaultColormap(wm.display, 0), fontcolor, &xft_font_color);
@@ -238,12 +241,21 @@ void swap(Client *client1, Client *client2) {
 void change_workspace() {
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++) {
     XUnmapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
+    XUnmapWindow(
+        wm.display,
+        wm.client_windows[current_workspace][i].decoration.close_button);
+    XUnmapWindow(
+        wm.display,
+        wm.client_windows[current_workspace][i].decoration.maximize_button);
   }
   current_workspace++;
   if (current_workspace >= WORKSPACE)
     current_workspace -= WORKSPACE;
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++) {
     XMapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
+    XMapWindow(wm.display, wm.client_windows[current_workspace][i].decoration.maximize_button);
+    XMapWindow(wm.display, wm.client_windows[current_workspace][i].decoration.close_button);
+    title_bar_stuff(&wm.client_windows[current_workspace][i]);
     if (wm.client_windows[current_workspace][i].was_focused)
       XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win,
                      RevertToPointerRoot, CurrentTime);
@@ -261,6 +273,9 @@ void change_workspace_back() {
   }
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++) {
     XMapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
+    XMapWindow(wm.display, wm.client_windows[current_workspace][i].decoration.maximize_button);
+    XMapWindow(wm.display, wm.client_windows[current_workspace][i].decoration.close_button);
+    title_bar_stuff(&wm.client_windows[current_workspace][i]);
     if (wm.client_windows[current_workspace][i].was_focused)
       XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win,
                      RevertToPointerRoot, CurrentTime);
@@ -533,26 +548,8 @@ void window_frame(Window win) {
   current_client->decoration.title_bar_font = font_create(
       FONT, DECORATION_FONT_COLOR, current_client->decoration.title_bar);
 
-  // title_bar_stuff(current_client);
-  XGetWindowAttributes(wm.display, current_client->frame, &attribs);
-  XGlyphInfo extents;
-  // close button
-  XClearWindow(wm.display, current_client->decoration.close_button);
-  XftTextExtents16(wm.display,
-                   current_client->decoration.close_button_font.font,
-                   (FcChar16 *)MAXIMIZE_ICON, strlen(MAXIMIZE_ICON), &extents);
-  draw_str(MAXIMIZE_ICON, current_client->decoration.close_button_font,
-           (ICON_SIZE / 2.0f) - (extents.xOff / 4.0f),
-           ((ICON_SIZE - 10) / 2.0f) + (extents.height / 1.25f));
-
-  // maximize icon
-  XClearWindow(wm.display, current_client->decoration.maximize_button);
-  XftTextExtents16(wm.display,
-                   current_client->decoration.maximize_button_font.font,
-                   (FcChar16 *)MAXIMIZE_ICON, strlen(MAXIMIZE_ICON), &extents);
-  draw_str(MAXIMIZE_ICON, current_client->decoration.maximize_button_font,
-           (ICON_SIZE / 2.0f) - (extents.xOff / 4.0f),
-           ((ICON_SIZE - 10) / 2.0f) + (extents.height / 1.25f));
+  title_bar_stuff(current_client);
+  // XGetWindowAttributes(wm.display, current_client->frame, &attribs);
 }
 
 void window_unframe(Window win) {
@@ -954,6 +951,7 @@ void run_bd26() {
   wm.current_layout[current_workspace] = WINDOW_LAYOUT_TILED;
   wm.window_gap = 10;
   wm.running = true;
+  wm.screen = DefaultScreen(wm.display);
   for (int i = 0; i < WORKSPACE; i++) {
     printf("Makint the state to normal");
     wm.currentstate[i] = NORMAL_STATE;
