@@ -1,2 +1,2 @@
 setxkbmap us &
-exec bd26
+exec bd26_beta

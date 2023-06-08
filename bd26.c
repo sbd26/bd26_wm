@@ -83,6 +83,7 @@ static void show_all_workspaces();
 // tiling related function
 
 void show_all_workspaces(){
+  printf("hello\n\n\n");
   Window win = XCreateSimpleWindow(wm.display, wm.root, 0, 100, DISPLAY_WIDTH, 400, BORDER_WIDTH, FBORDER_COLOR, BG_COLOR);
   XMapWindow(wm.display, win);
   XRaiseWindow(wm.display, win);
@@ -952,6 +953,7 @@ void handle_key_press(XKeyEvent e) {
     current_workspace++;
     window_frame(e.window);
   }else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, TEST)){
+    printf("Calling else if\n\n\n");
     show_all_workspaces();
   }
 }

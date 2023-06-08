@@ -2,7 +2,7 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define CLIENT_WINDOW_CAP 256
-#define MOD Mod4Mask
+#define MOD Mod1Mask
 
 
 //APPLICATION
