@@ -490,7 +490,7 @@ void window_frame(Window win) {
 
   
   bool changed = False;
-  int tmp_current_workspace = current_workspace;
+  int8_t tmp_current_workspace = current_workspace;
   XClassHint classhint;
   if (XGetClassHint(wm.display, win, &classhint)) {
     for (int i = 0; i < sizeof(rules) / sizeof(rules[0]); i++){
@@ -579,7 +579,6 @@ void window_frame(Window win) {
   }else {
     XMapWindow(wm.display, win_frame);
   }
-  // XGetWindowAttributes(wm.display, current_client->frame, &attribs);
 }
 
 void window_unframe(Window win) {
