@@ -63,5 +63,6 @@ typedef struct {
   Bar bar;
   int screen;
   CurrentState currentstate[WORKSPACE];
+  bool already_running[WORKSPACE];
 }bd26;
 

@@ -1,4 +1,14 @@
+typedef struct {
+  char app_name[20];
+  int t_workspace;
+  bool is_floating;
+}Rule;
 
+const Rule rules[] = {
+  {.app_name = "Thunar", .t_workspace = 2, .is_floating = true},
+  {.app_name = "firefox", .t_workspace = 0},
+  {.app_name = "Alacritty", .t_workspace = 1, .is_floating = true}
+};
 
 #define MOD Mod1Mask
 
