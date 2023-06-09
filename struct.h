@@ -55,6 +55,7 @@ typedef struct {
   WindowLayout current_layout[WORKSPACE];
   Client client_windows[WORKSPACE][CLIENT_WINDOW_CAP];
   uint32_t clients_count[WORKSPACE];
+  bool swap_done[WORKSPACE];
   Vec2 cursor_start_pos, cursor_start_frame_pos, cursor_start_frame_size;
   GC gc;
   Bar bar;

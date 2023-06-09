@@ -10,7 +10,6 @@
 #include <string.h>
 #include "config.h"
 #include "struct.h"
-
 int8_t current_workspace = 0;
 
 const char *make_window_floating[] = {
@@ -77,22 +76,27 @@ static void print_workspace_number();
 static void title_bar_stuff(Client *current_client);
 static FontStruct font_create(const char *fontname, const char *fontcolor,
                               Window win);
-static void show_all_workspaces();
+static void move_another_workspace(Client * client , int32_t workspace){
+  int client_index = get_client_index(client -> win);
+
+  if (workspace > WORKSPACE - 1) {
+    workspace -= WORKSPACE;
+  }
+  else if (workspace < 0){
+    workspace += WORKSPACE;
+  }
+  //save to the target workspace
+  wm.client_windows[workspace][wm.clients_count[workspace]++] = *client;
+  for (uint32_t i = client_index; i < wm.clients_count[current_workspace] - 1; i++){
+    wm.client_windows[current_workspace][i] = wm.client_windows[current_workspace][i + 1];
+  }
+  XUnmapWindow(wm.display, client->frame);
+  wm.swap_done[workspace] = True;
+  establish_window_layout(False);
+}
 //------other Functions end
 
 // tiling related function
-
-void show_all_workspaces(){
-  printf("hello\n\n\n");
-  Window win = XCreateSimpleWindow(wm.display, wm.root, 0, 100, DISPLAY_WIDTH, 400, BORDER_WIDTH, FBORDER_COLOR, BG_COLOR);
-  XMapWindow(wm.display, win);
-  XRaiseWindow(wm.display, win);
-  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
-    XUnmapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
-  }
-}
-
-
 
 void draw_str(const char *str, FontStruct font, int x, int y) {
   XftDrawStringUtf8(font.draw, &font.color, font.font, x, y, (XftChar8 *)str,
@@ -273,6 +277,11 @@ void change_workspace() {
       XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win,
                      RevertToPointerRoot, CurrentTime);
   }
+
+  if (wm.swap_done[current_workspace]){
+    establish_window_layout(false);
+    change_focus_window(wm.client_windows[current_workspace][wm.clients_count[current_workspace] - 1].frame);
+  }
   print_workspace_number();
 }
 
@@ -294,6 +303,10 @@ void change_workspace_back() {
                      RevertToPointerRoot, CurrentTime);
   }
   print_workspace_number();
+  if (wm.swap_done[current_workspace]) {
+  change_focus_window(wm.client_windows[current_workspace][wm.clients_count[current_workspace] - 1].frame);
+    establish_window_layout(False);
+  }
 }
 
 void establish_window_layout(bool restore_back) {
@@ -806,8 +819,6 @@ void grab_global_key() {
            false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CHANGE_ACTIVE_WORKSPACE),
            MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, TEST),
-           MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
 }
 
 void grab_window_key(Window win) {
@@ -834,8 +845,10 @@ void grab_window_key(Window win) {
            false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, MAX_MINI_APP), MOD, win,
            false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, MOVE_WINDOW_NEXT), MOD, win,
-           false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, MOVE_WINDOW_NEXT),
+           MOD, win, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, MOVE_WINDOW_PREV),
+           MOD, win, false, GrabModeAsync, GrabModeAsync);
 }
 
 void handle_key_press(XKeyEvent e) {
@@ -945,16 +958,11 @@ void handle_key_press(XKeyEvent e) {
              e.keycode ==
                  XKeysymToKeycode(wm.display, CHANGE_ACTIVE_WORKSPACE)) {
     change_active_window();
-  } else if (e.state & MOD &&
-             e.keycode == XKeysymToKeycode(wm.display, MOVE_WINDOW_NEXT)) {
-    XUnmapWindow(
-        wm.display,
-        wm.client_windows[current_workspace][get_client_index(e.window)].frame);
-    current_workspace++;
-    window_frame(e.window);
-  }else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, TEST)){
-    printf("Calling else if\n\n\n");
-    show_all_workspaces();
+  } else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, MOVE_WINDOW_PREV)){
+    move_another_workspace(&wm.client_windows[current_workspace][get_client_index(e.window)], current_workspace - 1);
+  }
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, MOVE_WINDOW_NEXT)){
+    move_another_workspace(&wm.client_windows[current_workspace][get_client_index(e.window)], current_workspace + 1);
   }
 }
 

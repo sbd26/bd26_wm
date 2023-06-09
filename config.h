@@ -48,6 +48,7 @@
 #define SWAP_WINDOW XK_A //ok
 #define SWAP_UP_DOWN XK_Z //ok
 #define MOVE_WINDOW_NEXT XK_H
+#define MOVE_WINDOW_PREV XK_G
 
 
 
@@ -80,6 +81,3 @@
 #define ICON_SIZE 20
 #define TITLE_BAR_HEIGHT 20
 #define BUTTON_GAPS 20
-
-
-#define TEST XK_Y
