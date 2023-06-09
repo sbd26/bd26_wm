@@ -13,18 +13,7 @@
 
 int8_t current_workspace = 0;
 
-const char *make_window_floating[] = {
-    "Thunar",
-    "flameshot",
-    "Alacritty",
-};
 
-const char *startup_commands[] = {"killall dunst &",
-                                  "setxkbmap us &",
-                                  "nitrogen --restore &",
-                                  "dunst --config ~/.config/i3/dunstrc &",
-                                  "picom &",
-                                  "polybar &"};
 
 static bool wm_detected = false;
 static bd26 wm;
@@ -84,7 +73,6 @@ static void move_another_workspace(Client * client, int32_t workspace);
 // tiling related function
 
 void move_another_workspace(Client * client, int32_t workspace){
-
   if (client->win == wm.root) return;
 
   if (workspace > WORKSPACE - 1) {

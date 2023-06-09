@@ -4,6 +4,13 @@ typedef struct {
   bool is_floating;
 }Rule;
 
+const char *startup_commands[] = {"killall dunst &",
+                                  "setxkbmap us &",
+                                  "nitrogen --restore &",
+                                  "dunst --config ~/.config/i3/dunstrc &",
+                                  "picom &",
+                                  "polybar &"};
+
 const Rule rules[] = {
   {.app_name = "Thunar", .t_workspace = 2, .is_floating = true},
   {.app_name = "firefox", .t_workspace = 0},
