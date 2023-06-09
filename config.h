@@ -15,7 +15,7 @@
 #define CMD_VOLUME_MUTE "pactl set-sink-mute   @DEFAULT_SINK@ toggle"
 
 //WINDOW RELATED 
-#define BORDER_WIDTH  0
+#define BORDER_WIDTH  2
 #define FBORDER_COLOR 0x8aadf4
 #define UBORDER_COLOR 0x2E3440
 #define DESKTOP_COUNT 9
@@ -50,7 +50,7 @@
 #define SWAP_WINDOW XK_A //ok
 #define SWAP_UP_DOWN XK_Z //ok
 #define MOVE_WINDOW_NEXT XK_H
-
+#define MOVE_WINDOW_PREV XK_G
 
 
 //Volumet Related

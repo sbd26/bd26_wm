@@ -77,9 +77,31 @@ static void print_workspace_number();
 static void title_bar_stuff(Client *current_client);
 static FontStruct font_create(const char *fontname, const char *fontcolor,
                               Window win);
+static void move_another_workspace(Client * client, int32_t workspace);
+
 //------other Functions end
 
 // tiling related function
+
+void move_another_workspace(Client * client, int32_t workspace){
+
+  if (workspace > WORKSPACE - 1) {
+    workspace -= WORKSPACE;
+  }
+  else if (workspace < 0){
+    workspace += WORKSPACE;
+  }
+  //save to the target workspace
+  wm.client_windows[workspace][wm.clients_count[workspace]++] = *client;
+  for (uint32_t i = get_client_index(client->win); i < wm.clients_count[current_workspace] - 1; i++){
+    wm.client_windows[current_workspace][i] = wm.client_windows[current_workspace][i + 1];
+  }
+  XUnmapWindow(wm.display, client->frame);
+  wm.swap_done[workspace] = True;
+  establish_window_layout(False);
+}
+
+
 
 void draw_str(const char *str, FontStruct font, int x, int y) {
   XftDrawStringUtf8(font.draw, &font.color, font.font, x, y, (XftChar8 *)str,
@@ -260,6 +282,10 @@ void change_workspace() {
       XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win,
                      RevertToPointerRoot, CurrentTime);
   }
+  if (wm.swap_done[current_workspace]){
+    establish_window_layout(false);
+    change_focus_window(wm.client_windows[current_workspace][wm.clients_count[current_workspace] - 1].frame);
+  }
   print_workspace_number();
 }
 
@@ -279,6 +305,10 @@ void change_workspace_back() {
     if (wm.client_windows[current_workspace][i].was_focused)
       XSetInputFocus(wm.display, wm.client_windows[current_workspace][i].win,
                      RevertToPointerRoot, CurrentTime);
+  }
+    if (wm.swap_done[current_workspace]) {
+  change_focus_window(wm.client_windows[current_workspace][wm.clients_count[current_workspace] - 1].frame);
+    establish_window_layout(False);
   }
   print_workspace_number();
 }
@@ -795,6 +825,7 @@ void grab_global_key() {
            MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
 }
 
+
 void grab_window_key(Window win) {
   XGrabButton(wm.display, Button1, MOD, win, false,
               ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
@@ -819,12 +850,13 @@ void grab_window_key(Window win) {
            false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, MAX_MINI_APP), MOD, win,
            false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, MOVE_WINDOW_NEXT), MOD, win,
-           false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, MOVE_WINDOW_NEXT),
+           MOD, win, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, MOVE_WINDOW_PREV),
+           MOD, win, false, GrabModeAsync, GrabModeAsync);
 }
-
 void handle_key_press(XKeyEvent e) {
-  // if user press MOD Key and Q then it will close the Programm
+ // if user press MOD Key and Q then it will close the Programm
   if (e.state & MOD &&
       e.keycode == XKeysymToKeycode(wm.display, CLOSE_WINDOW)) {
     XEvent msg;
@@ -930,13 +962,11 @@ void handle_key_press(XKeyEvent e) {
              e.keycode ==
                  XKeysymToKeycode(wm.display, CHANGE_ACTIVE_WORKSPACE)) {
     change_active_window();
-  } else if (e.state & MOD &&
-             e.keycode == XKeysymToKeycode(wm.display, MOVE_WINDOW_NEXT)) {
-    XUnmapWindow(
-        wm.display,
-        wm.client_windows[current_workspace][get_client_index(e.window)].frame);
-    current_workspace++;
-    window_frame(e.window);
+  } else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, MOVE_WINDOW_PREV)){
+    move_another_workspace(&wm.client_windows[current_workspace][get_client_index(e.window)], current_workspace - 1);
+  }
+  else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, MOVE_WINDOW_NEXT)){
+    move_another_workspace(&wm.client_windows[current_workspace][get_client_index(e.window)], current_workspace + 1);
   }
 }
 
