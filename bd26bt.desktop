@@ -1,0 +1,7 @@
+[Desktop Entry]
+Encoding=UTF-8
+Type=Application
+Name=bd26_beta
+Comment= A simple tilling window manager
+Exec=bd26_beta
+Icon=bd26_beta

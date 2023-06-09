@@ -486,8 +486,21 @@ void window_frame(Window win) {
   XResizeWindow(wm.display, win, attribs.width,
                 attribs.height - TITLE_BAR_HEIGHT);
   XMoveWindow(wm.display, win, 0, TITLE_BAR_HEIGHT);
-  XMapWindow(wm.display, win_frame);
   XSetInputFocus(wm.display, win, RevertToPointerRoot, CurrentTime);
+
+  
+  bool changed = False;
+  int tmp_current_workspace = current_workspace;
+  XClassHint classhint;
+  if (XGetClassHint(wm.display, win, &classhint)) {
+    for (int i = 0; i < sizeof(rules) / sizeof(rules[0]); i++){
+      if (strcmp(classhint.res_class, rules[i].app_name) == 0){
+        current_workspace = rules[i].t_workspace;
+        changed = True;
+      }
+    }
+  }
+  XFree(classhint.res_class);
 
   wm.client_windows[current_workspace][wm.clients_count[current_workspace]++] =
       (Client){.win = win,
@@ -497,20 +510,6 @@ void window_frame(Window win) {
   grab_window_key(win);
   wm.client_windows[current_workspace][wm.clients_count[current_workspace]]
       .is_floating = false;
-
-  XClassHint classhint;
-  if (XGetClassHint(wm.display, win, &classhint)) {
-    for (int i = 0;
-         i < sizeof(make_window_floating) / sizeof(make_window_floating[0]);
-         i++) {
-      if (strcmp(classhint.res_class, make_window_floating[i]) == 0) {
-        wm.client_windows[current_workspace][get_client_index(win_frame)]
-            .is_floating = true;
-        change_focus_window(win);
-      }
-    }
-  }
-  XFree(classhint.res_class);
 
   if (wm.currentstate[current_workspace] == MINI_STATE)
     mini_app();
@@ -575,6 +574,11 @@ void window_frame(Window win) {
       FONT, DECORATION_FONT_COLOR, current_client->decoration.title_bar);
 
   title_bar_stuff(current_client);
+  if (changed){
+    current_workspace = tmp_current_workspace;
+  }else {
+    XMapWindow(wm.display, win_frame);
+  }
   // XGetWindowAttributes(wm.display, current_client->frame, &attribs);
 }
 
