@@ -500,14 +500,13 @@ void window_frame(Window win) {
   
   bool changed = False;
   int8_t tmp_current_workspace = current_workspace;
+  int i;
   XClassHint classhint;
   if (XGetClassHint(wm.display, win, &classhint)) {
-    for (int i = 0; i < sizeof(rules) / sizeof(rules[0]); i++){
+    for (i = 0; i < sizeof(rules) / sizeof(rules[0]); i++){
       if (strcmp(classhint.res_class, rules[i].app_name) == 0){
         current_workspace = rules[i].t_workspace;
         changed = True;
-        if (rules[i].is_floating)
-          wm.client_windows[current_workspace][get_client_index(win_frame)].is_floating = true;
         wm.already_running[current_workspace] = true;
         break;
       }
@@ -519,7 +518,9 @@ void window_frame(Window win) {
       (Client){.win = win,
                .frame = win_frame,
                .fullscreen = attribs.width >= DISPLAY_WIDTH &&
-                             attribs.height >= DISPLAY_HEIGHT};
+                             attribs.height >= DISPLAY_HEIGHT,
+                .is_floating = rules[i].is_floating
+    };
   grab_window_key(win);
   wm.client_windows[current_workspace][wm.clients_count[current_workspace]]
       .is_floating = false;
