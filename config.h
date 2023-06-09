@@ -1,10 +1,6 @@
 
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define CLIENT_WINDOW_CAP 256
-#define MOD Mod4Mask
 
-#define SWAP  XK_S
+#define MOD Mod1Mask
 
 //APPLICATION
 #define CMD_BROWSER     "firefox &"
@@ -22,7 +18,6 @@
 #define BG_COLOR      0xffffff
 
 
-//TODO: Implement This feature
 //WINDOW NAVIGATOR KEY (VIM LIKE)
 #define NAVIGATE_UP  XK_K
 #define NAVIGATE_DOWN XK_J
@@ -38,8 +33,8 @@
 #define KILL_WM         XK_C
 #define FULL_SCREEN     XK_F //ok
 #define MAKE_TILE    XK_T //ok
-#define MINI_APP  XK_U
-#define MAX_MINI_APP XK_I
+#define MINI_APP  XK_U //ok
+#define MAX_MINI_APP XK_I //ok
 // #define NAVIGATE_MAX_APP XK_L
 
 
@@ -49,8 +44,8 @@
 #define CHANGE_ACTIVE_WORKSPACE XK_P
 #define SWAP_WINDOW XK_A //ok
 #define SWAP_UP_DOWN XK_Z //ok
-#define MOVE_WINDOW_NEXT XK_H
-#define MOVE_WINDOW_PREV XK_G
+#define MOVE_WINDOW_NEXT XK_H //ok
+#define MOVE_WINDOW_PREV XK_G //ok
 
 
 //Volumet Related

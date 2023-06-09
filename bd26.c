@@ -811,11 +811,11 @@ void grab_global_key() {
            false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CHANGE_WORKSPACE), MOD,
            wm.root, false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, VOLUME_UP), MOD, wm.root,
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, VOLUME_UP), ControlMask, wm.root,
            false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, VOLUME_DOWN), MOD, wm.root,
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, VOLUME_DOWN), ControlMask, wm.root,
            false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, VOLUME_MUTE), MOD, wm.root,
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, VOLUME_MUTE), ControlMask, wm.root,
            false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CHANGE_WORKSPACE_BACK), MOD,
            wm.root, false, GrabModeAsync, GrabModeAsync);
@@ -886,13 +886,13 @@ void handle_key_press(XKeyEvent e) {
       unset_fullscreen(e.window);
     } else
       set_fullscreen(e.window);
-  } else if (e.state & MOD &&
+  } else if (e.state & ControlMask &&
              e.keycode == XKeysymToKeycode(wm.display, VOLUME_UP))
     system(CMD_VOLUME_UP);
-  else if (e.state & MOD &&
+  else if (e.state & ControlMask &&
            e.keycode == XKeysymToKeycode(wm.display, VOLUME_DOWN))
     system(CMD_VOLUME_DOWN);
-  else if (e.state & MOD &&
+  else if (e.state & ControlMask &&
            e.keycode == XKeysymToKeycode(wm.display, VOLUME_MUTE))
     system(CMD_VOLUME_MUTE);
   else if (e.state & MOD &&
