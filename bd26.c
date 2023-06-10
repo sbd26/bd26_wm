@@ -11,7 +11,7 @@
 #include "config.h"
 #include "struct.h"
 int8_t current_workspace = 0;
-
+#define XA_ATOM 4  // Manually define the XA_ATOM constant
 const char *make_window_floating[] = {
     "Thunar",
     "flameshot",
@@ -27,6 +27,33 @@ const char *startup_commands[] = {"killall dunst &",
 
 static bool wm_detected = false;
 static bd26 wm;
+
+
+
+int isPopupWindow (Window window) {
+    Atom windowTypeAtom = XInternAtom(wm.display, "_NET_WM_WINDOW_TYPE", False);
+    Atom popupAtom = XInternAtom(wm.display, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+
+    Atom actualType;
+    int actualFormat;
+    unsigned long itemCount, bytesAfter;
+    Atom* atoms;
+
+    if (XGetWindowProperty(wm.display, window, windowTypeAtom, 0, 1024, False,
+                           XA_ATOM, &actualType, &actualFormat, &itemCount,
+                           &bytesAfter, (unsigned char**)&atoms) == Success) {
+        for (unsigned long i = 0; i < itemCount; i++) {
+            if (atoms[i] == popupAtom) {
+                XFree(atoms);
+                return 1;  // Pop-up window detected
+            }
+        }
+        XFree(atoms);
+    }
+
+    return 0;  // Not a pop-up window
+}
+
 
 static void handle_create_notify(XCreateWindowEvent e) { (void)e; }
 static void handle_configure_notify(XConfigureEvent e) { (void)e; }
@@ -487,6 +514,10 @@ void window_frame(Window win) {
                 attribs.height - TITLE_BAR_HEIGHT);
   XMoveWindow(wm.display, win, 0, TITLE_BAR_HEIGHT);
   XSetInputFocus(wm.display, win, RevertToPointerRoot, CurrentTime);
+  
+
+  int is_dialog = isPopupWindow(win);
+  printf("IS DIALOG = %d\n\n\n", is_dialog);
 
   
   bool changed = False;
@@ -502,6 +533,7 @@ void window_frame(Window win) {
   }
   XFree(classhint.res_class);
 
+
   wm.client_windows[current_workspace][wm.clients_count[current_workspace]++] =
       (Client){.win = win,
                .frame = win_frame,
@@ -510,6 +542,10 @@ void window_frame(Window win) {
   grab_window_key(win);
   wm.client_windows[current_workspace][wm.clients_count[current_workspace]]
       .is_floating = false;
+
+  if (is_dialog){
+    wm.client_windows[current_workspace][get_client_index(win)].is_floating = true;
+  }
 
   if (wm.currentstate[current_workspace] == MINI_STATE)
     mini_app();
@@ -522,6 +558,7 @@ void window_frame(Window win) {
       .was_focused = true;
 
   int32_t client_index = get_client_index(win);
+
   Client *current_client = &wm.client_windows[current_workspace][client_index];
 
   // toy window
@@ -597,14 +634,10 @@ void window_unframe(Window win) {
 
   for (uint32_t i = client_index; i < wm.clients_count[current_workspace] - 1;
        i++) {
-    printf("SWAPPING\n\n\n\n");
-    printf("CLIENT INDEX IS %d : %d\n\n\n\n",
-           wm.clients_count[current_workspace], i);
     wm.client_windows[current_workspace][i] =
         wm.client_windows[current_workspace][i + 1];
   }
   wm.clients_count[current_workspace]--;
-  printf("CLIENT INDEX IS %d\n\n\n\n", wm.clients_count[current_workspace]);
   if (wm.clients_count[current_workspace] != 0) {
     if (client_index == 0)
       client_index = 1;
@@ -711,7 +744,6 @@ void handle_button_press(XButtonEvent e) {
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++) {
     if (e.window ==
         wm.client_windows[current_workspace][i].decoration.maximize_button) {
-      printf("Fullscreen Pressed\n\n\n");
       if (wm.client_windows[current_workspace][i].fullscreen) {
         unset_fullscreen(wm.client_windows[current_workspace][i].frame);
       } else {
@@ -724,7 +756,6 @@ void handle_button_press(XButtonEvent e) {
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++) {
     if (e.window ==
         wm.client_windows[current_workspace][i].decoration.close_button) {
-      printf("Close button Pressed\n\n\n\n");
 
       XEvent msg;
       memset(&msg, 0, sizeof(msg));
