@@ -65,10 +65,37 @@ static FontStruct font_create(const char *fontname, const char *fontcolor,
                               Window win);
 static void move_another_workspace(Client *client, int32_t workspace);
 static void Change_workspace(int32_t t_index);
-
+static int8_t isDialogWindow(Window win);
 //------other Functions end
 
 // tiling related function
+
+
+#define XA_ATOM 4
+int8_t isDialogWindow(Window win){
+    Atom windowTypeAtom = XInternAtom(wm.display, "_NET_WM_WINDOW_TYPE", False);
+    Atom popupAtom = XInternAtom(wm.display, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+
+    Atom actualType;
+    int actualFormat;
+    unsigned long itemCount, bytesAfter;
+    Atom* atoms;
+
+    if (XGetWindowProperty(wm.display, win, windowTypeAtom, 0, 1024, False,
+                           XA_ATOM, &actualType, &actualFormat, &itemCount,
+                           &bytesAfter, (unsigned char**)&atoms) == Success) {
+        for (unsigned long i = 0; i < itemCount; i++) {
+            if (atoms[i] == popupAtom) {
+                XFree(atoms);
+                return 1;  // Pop-up window detected
+            }
+        }
+        XFree(atoms);
+    }
+
+    return 0;  // Not a pop-up window
+}
+
 
 void move_another_workspace(Client *client, int32_t workspace) {
   if (client->win == wm.root)
@@ -488,6 +515,11 @@ void window_frame(Window win) {
   grab_window_key(win);
   wm.client_windows[current_workspace][wm.clients_count[current_workspace]]
       .is_floating = false;
+
+
+  if (isDialogWindow(win)){
+    wm.client_windows[current_workspace][get_client_index(win)].is_floating = true;
+  }
 
   if (wm.currentstate[current_workspace] == MINI_STATE)
     mini_app();
