@@ -837,6 +837,8 @@ void grab_global_key() {
            false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CHANGE_ACTIVE_WORKSPACE),
            MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, SCREENSHOT_KEY),
+           MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
 }
 
 void grab_window_key(Window win) {
@@ -1002,6 +1004,8 @@ void handle_key_press(XKeyEvent e) {
     move_another_workspace(
         &wm.client_windows[current_workspace][get_client_index(e.window)],
         current_workspace + 1);
+  } else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, SCREENSHOT_KEY)){
+    system(CMD_SCREENSHOT);
   }
 }
 
@@ -1014,7 +1018,7 @@ void run_bd26() {
   wm.cursor_start_frame_pos = (Vec2){.x = 0.0f, .y = 0.0f};
   wm.cursor_start_pos = (Vec2){.x = 0.0f, .y = 0.0f};
   wm.current_layout[current_workspace] = WINDOW_LAYOUT_TILED;
-  wm.window_gap = 10;
+  // wm.window_gap = 10;
   wm.running = true;
   wm.screen = DefaultScreen(wm.display);
   for (int i = 0; i < WORKSPACE; i++) {
@@ -1094,9 +1098,16 @@ void run_bd26() {
   }
 }
 
+
+static void run_startup_cmds() {
+  uint32_t t = sizeof(startup_commands) / sizeof(startup_commands[0]);
+  for (uint32_t i = 0; i < t; i++)
+    system(startup_commands[i]);
+}
+
 bd26 init_bd26() {
   bd26 tmp;
-
+  run_startup_cmds();
   tmp.display = XOpenDisplay(NULL);
   if (!tmp.display) {
     err(1, "Can not create the connection");
@@ -1108,18 +1119,11 @@ bd26 init_bd26() {
 
 void close_bd26() { XCloseDisplay(wm.display); }
 
-static void run_startup_cmds() {
-  uint32_t t = sizeof(startup_commands) / sizeof(startup_commands[0]);
-  for (uint32_t i = 0; i < t; i++)
-    system(startup_commands[i]);
-}
-
 int main() {
   wm = init_bd26();
   for (uint32_t i = 0; i < WORKSPACE; i++) {
     wm.clients_count[i] = 0;
   }
-  run_startup_cmds();
   run_bd26();
   close_bd26();
 }

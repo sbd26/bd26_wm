@@ -18,7 +18,7 @@ const Rule rules[] = {
   {.app_name = "Alacritty", .t_workspace = 1, .is_floating = false, .will_focused = true}
 };
 
-#define MOD Mod1Mask
+#define MOD Mod4Mask
 
 //APPLICATION
 #define CMD_BROWSER     "firefox &"
@@ -27,6 +27,7 @@ const Rule rules[] = {
 #define CMD_VOLUME_UP   "pactl set-sink-volume @DEFAULT_SINK@ +5%"
 #define CMD_VOLUME_DOWN "pactl set-sink-volume @DEFAULT_SINK@ -5%"
 #define CMD_VOLUME_MUTE "pactl set-sink-mute   @DEFAULT_SINK@ toggle"
+#define CMD_SCREENSHOT "flameshot gui"
 
 //WINDOW RELATED 
 #define BORDER_WIDTH  2
@@ -48,6 +49,7 @@ const Rule rules[] = {
 #define OPEN_BROWSER    XK_W
 #define OPEN_LAUNCHER   XK_D
 #define CLOSE_WINDOW    XK_Q //ok 
+#define SCREENSHOT_KEY  XK_Print
 #define KILL_WM         XK_C
 #define FULL_SCREEN     XK_F //ok
 #define MAKE_TILE    XK_T //ok
