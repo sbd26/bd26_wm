@@ -64,5 +64,8 @@ typedef struct {
   int screen;
   CurrentState currentstate[WORKSPACE];
   bool already_running[WORKSPACE];
+  float gaps[WORKSPACE];
+  float test;
+  float test1;
 }bd26;
 

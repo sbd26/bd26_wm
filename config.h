@@ -31,7 +31,7 @@ const Rule rules[] = {
 
 //WINDOW RELATED 
 #define BORDER_WIDTH  2
-#define FBORDER_COLOR 0x8aadf4
+#define FBORDER_COLOR 0xc6a0f6
 #define UBORDER_COLOR 0x2E3440
 #define DESKTOP_COUNT 9
 #define BG_COLOR      0xffffff
@@ -42,6 +42,9 @@ const Rule rules[] = {
 #define NAVIGATE_DOWN XK_J
 //WINDOW NAVIGATOR END
 
+
+//TILING RELATED
+#define INCREASE_DECREASE_MASTER_SIZE XK_L
 
 
 //KEYBINDING
@@ -100,3 +103,4 @@ const Rule rules[] = {
 #define TITLE_BAR_HEIGHT 20
 #define BUTTON_GAPS 20
 
+#define XA_ATOM 4

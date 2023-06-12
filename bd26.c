@@ -70,32 +70,29 @@ static int8_t isDialogWindow(Window win);
 
 // tiling related function
 
+int8_t isDialogWindow(Window win) {
+  Atom windowTypeAtom = XInternAtom(wm.display, "_NET_WM_WINDOW_TYPE", False);
+  Atom popupAtom = XInternAtom(wm.display, "_NET_WM_WINDOW_TYPE_DIALOG", False);
 
-#define XA_ATOM 4
-int8_t isDialogWindow(Window win){
-    Atom windowTypeAtom = XInternAtom(wm.display, "_NET_WM_WINDOW_TYPE", False);
-    Atom popupAtom = XInternAtom(wm.display, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+  Atom actualType;
+  int actualFormat;
+  unsigned long itemCount, bytesAfter;
+  Atom *atoms;
 
-    Atom actualType;
-    int actualFormat;
-    unsigned long itemCount, bytesAfter;
-    Atom* atoms;
-
-    if (XGetWindowProperty(wm.display, win, windowTypeAtom, 0, 1024, False,
-                           XA_ATOM, &actualType, &actualFormat, &itemCount,
-                           &bytesAfter, (unsigned char**)&atoms) == Success) {
-        for (unsigned long i = 0; i < itemCount; i++) {
-            if (atoms[i] == popupAtom) {
-                XFree(atoms);
-                return 1;  // Pop-up window detected
-            }
-        }
+  if (XGetWindowProperty(wm.display, win, windowTypeAtom, 0, 1024, False,
+                         XA_ATOM, &actualType, &actualFormat, &itemCount,
+                         &bytesAfter, (unsigned char **)&atoms) == Success) {
+    for (unsigned long i = 0; i < itemCount; i++) {
+      if (atoms[i] == popupAtom) {
         XFree(atoms);
+        return 1; // Pop-up window detected
+      }
     }
+    XFree(atoms);
+  }
 
-    return 0;  // Not a pop-up window
+  return 0; // Not a pop-up window
 }
-
 
 void move_another_workspace(Client *client, int32_t workspace) {
   if (client->win == wm.root)
@@ -341,7 +338,8 @@ void establish_window_layout(bool restore_back) {
     }
 
     resize_client(
-        rooT, (Vec2){.x = (float)DISPLAY_WIDTH / 2, .y = DISPLAY_HEIGHT - 20});
+        rooT, (Vec2){.x = (float)DISPLAY_WIDTH / 2 + wm.gaps[current_workspace],
+                     .y = DISPLAY_HEIGHT - 20});
     move_client(rooT, (Vec2){.x = 5, .y = 30});
     rooT->fullscreen = false;
     float y_cordintae = 30;
@@ -349,10 +347,13 @@ void establish_window_layout(bool restore_back) {
     for (uint32_t i = 1; i < clients_count; i++) {
       resize_client(
           tmp_clients[i],
-          (Vec2){.x = ((float)DISPLAY_WIDTH / 2) - 22,
+          (Vec2){.x = (float)DISPLAY_WIDTH / 2 - wm.gaps[current_workspace] -
+                      wm.test,
                  .y = ((float)DISPLAY_HEIGHT / (clients_count - 1) - 20)});
-      move_client(tmp_clients[i], (Vec2){.x = ((float)DISPLAY_WIDTH / 2 + 15),
-                                         .y = y_cordintae});
+      move_client(tmp_clients[i],
+                  (Vec2){.x = (float)DISPLAY_WIDTH / 2 + wm.test1 +
+                              wm.gaps[current_workspace],
+                         .y = y_cordintae});
       y_cordintae += ((float)DISPLAY_HEIGHT / (clients_count - 1));
     }
   }
@@ -480,6 +481,7 @@ void window_frame(Window win) {
   const Window win_frame = XCreateSimpleWindow(
       wm.display, wm.root, attribs.x, attribs.y, attribs.width, attribs.height,
       BORDER_WIDTH, FBORDER_COLOR, BG_COLOR);
+
   XCompositeRedirectWindow(wm.display, win_frame, CompositeRedirectAutomatic);
   // Select Input for the win_frame
   XSelectInput(wm.display, win_frame,
@@ -516,9 +518,9 @@ void window_frame(Window win) {
   wm.client_windows[current_workspace][wm.clients_count[current_workspace]]
       .is_floating = false;
 
-
-  if (isDialogWindow(win)){
-    wm.client_windows[current_workspace][get_client_index(win)].is_floating = true;
+  if (isDialogWindow(win)) {
+    wm.client_windows[current_workspace][get_client_index(win)].is_floating =
+        true;
   }
 
   if (wm.currentstate[current_workspace] == MINI_STATE)
@@ -669,6 +671,8 @@ void handle_unmap_notify(XUnmapEvent e) {
     return;
   }
   window_unframe(e.window);
+  if (wm.clients_count[current_workspace] == 0)
+    wm.gaps[current_workspace] = 0;
 }
 
 void handle_configure_request(XConfigureRequestEvent e) {
@@ -837,8 +841,15 @@ void grab_global_key() {
            false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display, XKeysymToKeycode(wm.display, CHANGE_ACTIVE_WORKSPACE),
            MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
-  XGrabKey(wm.display, XKeysymToKeycode(wm.display, SCREENSHOT_KEY),
-           MOD, wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display, XKeysymToKeycode(wm.display, SCREENSHOT_KEY), MOD,
+           wm.root, false, GrabModeAsync, GrabModeAsync);
+
+  XGrabKey(wm.display,
+           XKeysymToKeycode(wm.display, INCREASE_DECREASE_MASTER_SIZE),
+           (MOD | ShiftMask), wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display,
+           XKeysymToKeycode(wm.display, INCREASE_DECREASE_MASTER_SIZE), MOD,
+           wm.root, false, GrabModeAsync, GrabModeAsync);
 }
 
 void grab_window_key(Window win) {
@@ -1004,8 +1015,21 @@ void handle_key_press(XKeyEvent e) {
     move_another_workspace(
         &wm.client_windows[current_workspace][get_client_index(e.window)],
         current_workspace + 1);
-  } else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, SCREENSHOT_KEY)){
+  } else if (e.state & MOD &&
+             e.keycode == XKeysymToKeycode(wm.display, SCREENSHOT_KEY)) {
     system(CMD_SCREENSHOT);
+  } else if ((e.state & MOD) && (e.state & ShiftMask) &&
+             e.keycode ==
+                 XKeysymToKeycode(wm.display, INCREASE_DECREASE_MASTER_SIZE)) {
+    wm.gaps[current_workspace] -= 10;
+    establish_window_layout(false);
+  }
+
+  else if (e.state & MOD &&
+           e.keycode ==
+               XKeysymToKeycode(wm.display, INCREASE_DECREASE_MASTER_SIZE)) {
+    wm.gaps[current_workspace] += 10;
+    establish_window_layout(false);
   }
 }
 
@@ -1018,7 +1042,10 @@ void run_bd26() {
   wm.cursor_start_frame_pos = (Vec2){.x = 0.0f, .y = 0.0f};
   wm.cursor_start_pos = (Vec2){.x = 0.0f, .y = 0.0f};
   wm.current_layout[current_workspace] = WINDOW_LAYOUT_TILED;
+  wm.gaps[current_workspace] = 0;
   // wm.window_gap = 10;
+  wm.test = 22;
+  wm.test1 = 15;
   wm.running = true;
   wm.screen = DefaultScreen(wm.display);
   for (int i = 0; i < WORKSPACE; i++) {
@@ -1097,7 +1124,6 @@ void run_bd26() {
     }
   }
 }
-
 
 static void run_startup_cmds() {
   uint32_t t = sizeof(startup_commands) / sizeof(startup_commands[0]);
