@@ -105,14 +105,31 @@ void move_another_workspace(Client *client, int32_t workspace) {
   }
   // save to the target workspace
   wm.client_windows[workspace][wm.clients_count[workspace]++] = *client;
-  for (uint32_t i = get_client_index(client->win);
-       i < wm.clients_count[current_workspace] - 1; i++) {
-    wm.client_windows[current_workspace][i] =
-        wm.client_windows[current_workspace][i + 1];
+  //remvoe from the current workspace
+  uint32_t cli_indx = get_client_index(client->frame);
+
+  Client * tmp_clients[wm.clients_count[current_workspace]];
+
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
+    tmp_clients[i] = &wm.client_windows[current_workspace][i];
   }
+
+  for (uint32_t i = cli_indx; i < wm.clients_count[current_workspace] - 1; i++){
+    tmp_clients[i] = tmp_clients[i + 1];
+  }
+
+  wm.clients_count[current_workspace]--;
+
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
+    wm.client_windows[current_workspace][i] = *tmp_clients[i];
+  }
+
   XUnmapWindow(wm.display, client->frame);
-  wm.swap_done[workspace] = True;
-  establish_window_layout(False);
+  wm.swap_done[workspace] = true;
+  if (wm.clients_count[current_workspace] != 0){
+    establish_window_layout(False);
+    change_focus_window(wm.client_windows[current_workspace][wm.clients_count[current_workspace] - 1].frame);
+  }
 }
 
 void draw_str(const char *str, FontStruct font, int x, int y) {
@@ -121,6 +138,8 @@ void draw_str(const char *str, FontStruct font, int x, int y) {
 }
 
 void title_bar_stuff(Client *current_client) {
+  XWindowAttributes attribs;
+  XGetWindowAttributes(wm.display, current_client->frame, &attribs);
   XGlyphInfo extents;
   // close button
   XClearWindow(wm.display, current_client->decoration.close_button);
@@ -139,6 +158,23 @@ void title_bar_stuff(Client *current_client) {
   draw_str(MAXIMIZE_ICON, current_client->decoration.maximize_button_font,
            (ICON_SIZE / 2.0f) - (extents.xOff / 4.0f),
            ((ICON_SIZE - 10) / 2.0f) + (extents.height / 1.25f));
+  XClearWindow(wm.display, current_client->decoration.title_bar);
+  char *window_name = NULL;
+  XFetchName(wm.display, current_client->win, &window_name);
+
+  if (window_name != NULL) {
+    XGlyphInfo extents;
+    XftTextExtents16(wm.display, current_client->decoration.title_bar_font.font,
+                     (FcChar16 *)window_name, strlen(window_name), &extents);
+    XSetForeground(wm.display, DefaultGC(wm.display, wm.screen),
+                   TITLE_BAR_BG_COLOR);
+    XFillRectangle(wm.display, current_client->decoration.title_bar,
+                   DefaultGC(wm.display, wm.screen), 0, 0, extents.xOff,
+                   TITLE_BAR_HEIGHT);
+    draw_str(window_name, current_client->decoration.title_bar_font,
+             attribs.width / 2 - 50, (TITLE_BAR_HEIGHT / 2 + 5));
+    XFree(window_name);
+  }
 }
 
 FontStruct font_create(const char *fontname, const char *fontcolor,
@@ -273,6 +309,7 @@ void swap(Client *client1, Client *client2) {
 }
 
 void Change_workspace(int32_t t_index) {
+  if (current_workspace == t_index) return;
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++) {
     XUnmapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
     XUnmapWindow(
@@ -305,6 +342,7 @@ void Change_workspace(int32_t t_index) {
         wm.client_windows[current_workspace]
                          [wm.clients_count[current_workspace] - 1]
                              .frame);
+    wm.swap_done[current_workspace] = false;
   }
   if (wm.already_running[current_workspace]) {
     establish_window_layout(false);
@@ -341,6 +379,7 @@ void establish_window_layout(bool restore_back) {
         rooT, (Vec2){.x = (float)DISPLAY_WIDTH / 2 + wm.gaps[current_workspace],
                      .y = DISPLAY_HEIGHT - 20});
     move_client(rooT, (Vec2){.x = 5, .y = 30});
+    title_bar_stuff(rooT);
     rooT->fullscreen = false;
     float y_cordintae = 30;
 
@@ -355,6 +394,10 @@ void establish_window_layout(bool restore_back) {
                               wm.gaps[current_workspace],
                          .y = y_cordintae});
       y_cordintae += ((float)DISPLAY_HEIGHT / (clients_count - 1));
+      if (tmp_clients[i]->decoration.title_bar_font.font != NULL &&
+          tmp_clients[i]->decoration.close_button_font.font != NULL &&
+          tmp_clients[i]->decoration.maximize_button_font.font != NULL)
+        title_bar_stuff(tmp_clients[i]);
     }
   }
 }
@@ -454,6 +497,14 @@ void set_fullscreen(Window win) {
               (Vec2){.x = 9.7, .y = 32.5});
   wm.client_windows[current_workspace][client_index].fullscreen = true;
 
+  if (wm.client_windows[current_workspace][client_index]
+              .decoration.maximize_button_font.font != NULL &&
+      wm.client_windows[current_workspace][client_index]
+              .decoration.title_bar_font.font != NULL &&
+      wm.client_windows[current_workspace][client_index]
+              .decoration.maximize_button_font.font != NULL)
+    title_bar_stuff(&wm.client_windows[current_workspace][client_index]);
+
   change_focus_window(win);
 }
 
@@ -469,6 +520,14 @@ void unset_fullscreen(Window win) {
       &wm.client_windows[current_workspace][client_index],
       wm.client_windows[current_workspace][client_index].fullscreen_revert_pos);
   wm.client_windows[current_workspace][client_index].fullscreen = false;
+
+  if (wm.client_windows[current_workspace][client_index]
+              .decoration.maximize_button_font.font != NULL &&
+      wm.client_windows[current_workspace][client_index]
+              .decoration.title_bar_font.font != NULL &&
+      wm.client_windows[current_workspace][client_index]
+              .decoration.maximize_button_font.font != NULL)
+    title_bar_stuff(&wm.client_windows[current_workspace][client_index]);
 }
 
 // others but dorakri start
@@ -537,9 +596,9 @@ void window_frame(Window win) {
   Client *current_client = &wm.client_windows[current_workspace][client_index];
 
   // toy window
-  Window helper_window =
-      XCreateSimpleWindow(wm.display, wm.root, 50, 200, attribs.width,
-                          attribs.height, BORDER_WIDTH, 0xff0000, 0xff0000);
+  Window helper_window = XCreateSimpleWindow(
+      wm.display, wm.root, 50, 200, attribs.width, attribs.height, BORDER_WIDTH,
+      TITLE_BAR_BG_COLOR, TITLE_BAR_BG_COLOR);
   XUnmapWindow(wm.display, helper_window);
 
   XWindowAttributes attribs_frame;
@@ -582,8 +641,8 @@ void window_frame(Window win) {
       FONT, MAXIMIZE_ICON_COLOR, current_client->decoration.maximize_button);
   current_client->decoration.close_button_font = font_create(
       FONT, CLOSE_ICON_COLOR, current_client->decoration.close_button);
-  current_client->decoration.title_bar_font = font_create(
-      FONT, DECORATION_FONT_COLOR, current_client->decoration.title_bar);
+  current_client->decoration.title_bar_font =
+      font_create(FONT, "#a7a6b4", current_client->decoration.title_bar);
 
   change_focus_window(win);
   if (current_workspace == tmp_current_workspace || !changed) {
@@ -601,27 +660,41 @@ void window_frame(Window win) {
 void window_unframe(Window win) {
   int32_t client_index = get_client_index(win);
 
-  if (client_index == -1) {
+  if (client_index == -1 || win == wm.root) {
     printf("Returning from unframe");
     return;
   }
   const Window frame_window =
       wm.client_windows[current_workspace][client_index].frame;
 
+
+  Client * tmp_clients[wm.clients_count[current_workspace]];
+
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
+    tmp_clients[i] = &wm.client_windows[current_workspace][i];
+  }
+
+  for (uint32_t i = client_index; i < wm.clients_count[current_workspace] - 1; i++){
+    tmp_clients[i] = tmp_clients[i+1];
+  }
+
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace] - 1; i++){
+    wm.client_windows[current_workspace][i] = *tmp_clients[i];
+  }
+
+
   XReparentWindow(wm.display, frame_window, wm.root, 0, 0);
   XReparentWindow(wm.display, win, wm.root, 0, 0);
   XUnmapWindow(wm.display, frame_window);
-
-  for (uint32_t i = client_index; i < wm.clients_count[current_workspace] - 1;
-       i++) {
-    printf("SWAPPING\n\n\n\n");
-    printf("CLIENT INDEX IS %d : %d\n\n\n\n",
-           wm.clients_count[current_workspace], i);
-    wm.client_windows[current_workspace][i] =
-        wm.client_windows[current_workspace][i + 1];
-  }
+  //
+  // for (uint32_t i = client_index; i < wm.clients_count[current_workspace] - 1;
+  //      i++) {
+  //   printf("CLIENT INDEX IS %d : %d\n\n\n\n",
+  //          wm.clients_count[current_workspace], i);
+  //   wm.client_windows[current_workspace][i] =
+  //       wm.client_windows[current_workspace][i + 1];
+  // }
   wm.clients_count[current_workspace]--;
-  printf("CLIENT INDEX IS %d\n\n\n\n", wm.clients_count[current_workspace]);
   if (wm.clients_count[current_workspace] != 0) {
     if (client_index == 0)
       client_index = 1;
@@ -718,8 +791,6 @@ void handle_button_press(XButtonEvent e) {
       wm.client_windows[current_workspace][get_client_index(e.window)].frame);
 
   XSetInputFocus(wm.display, e.window, RevertToPointerRoot, CurrentTime);
-  // change_focus_window(
-  // wm.client_windows[current_workspace][get_client_index(e.window)].frame);
 
   if (e.button == Button1 && wm.currentstate[current_workspace] == MINI_STATE &&
       e.window != wm.root) {
@@ -750,11 +821,12 @@ void handle_button_press(XButtonEvent e) {
       memset(&msg, 0, sizeof(msg));
       msg.xclient.type = ClientMessage;
       msg.xclient.message_type = XInternAtom(wm.display, "WM_PROTOCOLS", false);
-      msg.xclient.window = e.window;
+      msg.xclient.window = wm.client_windows[current_workspace][i].win;
       msg.xclient.format = 32;
       msg.xclient.data.l[0] =
           XInternAtom(wm.display, "WM_DELETE_WINDOW", false);
-      XSendEvent(wm.display, e.window, false, 0, &msg);
+      XSendEvent(wm.display, wm.client_windows[current_workspace][i].win, false,
+                 0, &msg);
       break;
     }
   }
@@ -786,6 +858,8 @@ void handle_motion_notify(XMotionEvent e) {
       else
         establish_window_layout(false);
     }
+    title_bar_stuff(
+        &wm.client_windows[current_workspace][get_client_index(e.window)]);
   } else if (e.state & Button3Mask) {
     /* Pressed MOD + right mouse*/
     if (wm.client_windows[current_workspace][get_client_index(e.window)]
@@ -813,6 +887,8 @@ void handle_motion_notify(XMotionEvent e) {
       tmp_client->is_floating = true;
       establish_window_layout(false);
     }
+    title_bar_stuff(
+        &wm.client_windows[current_workspace][get_client_index(e.window)]);
   }
 }
 
@@ -1033,6 +1109,12 @@ void handle_key_press(XKeyEvent e) {
   }
 }
 
+void tt_stuff() {
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++) {
+    title_bar_stuff(&wm.client_windows[current_workspace][i]);
+  }
+}
+
 void run_bd26() {
 
   XSetErrorHandler(handle_wm_detected);
@@ -1066,9 +1148,13 @@ void run_bd26() {
   Cursor cursor = XcursorLibraryLoadCursor(wm.display, "arrow");
   XDefineCursor(wm.display, wm.root, cursor);
   XSetErrorHandler(handle_x_error);
-
   grab_global_key(); // Dispatch Event Start
   while (wm.running) {
+
+    for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++) {
+      title_bar_stuff(&wm.client_windows[current_workspace][i]);
+    }
+
     XEvent e;
     XNextEvent(wm.display, &e);
     switch (e.type) {

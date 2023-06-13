@@ -14,26 +14,24 @@ const char *startup_commands[] = {"killall dunst &",
 
 const Rule rules[] = {
   {.app_name = "Thunar", .t_workspace = 2, .is_floating = true, .will_focused = false},
-  {.app_name = "firefox", .t_workspace = 0},
-  {.app_name = "Alacritty", .t_workspace = 1, .is_floating = false, .will_focused = true}
+  {.app_name = "firefox", .t_workspace = 0, .will_focused = true},
 };
 
 #define MOD Mod4Mask
 
 //APPLICATION
 #define CMD_BROWSER     "firefox &"
-#define CMD_TERMINAL    "st &"
+#define CMD_TERMINAL    "alacritty &"
 #define CMD_APPLAUNCHER "rofi -show drun &"
 #define CMD_VOLUME_UP   "pactl set-sink-volume @DEFAULT_SINK@ +5%"
 #define CMD_VOLUME_DOWN "pactl set-sink-volume @DEFAULT_SINK@ -5%"
 #define CMD_VOLUME_MUTE "pactl set-sink-mute   @DEFAULT_SINK@ toggle"
-#define CMD_SCREENSHOT "flameshot gui"
+#define CMD_SCREENSHOT  "flameshot gui"
 
 //WINDOW RELATED 
 #define BORDER_WIDTH  2
-#define FBORDER_COLOR 0xc6a0f6
+#define FBORDER_COLOR 0x99d1db
 #define UBORDER_COLOR 0x2E3440
-#define DESKTOP_COUNT 9
 #define BG_COLOR      0xffffff
 
 
@@ -86,10 +84,10 @@ const Rule rules[] = {
 //DECORATION RELATED
 
 
-#define FONT                                    "JetBrains Mono Nerd Font:size=10:style=bold"
+#define FONT                                    "FantasqueSansM Nerd Font:size=13:style=bold"
 #define FONT_SIZE                               15
 #define FONT_COLOR                              "#f9b424"
-#define DECORATION_FONT_COLOR                   "#ff0000"
+#define DECORATION_FONT_COLOR                   "#302d35"
 
 #define MAXIMIZE_ICON                ""
 #define MAXIMIZE_ICON_COLOR          "#f9b424"

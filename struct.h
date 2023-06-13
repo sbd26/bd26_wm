@@ -1,5 +1,3 @@
-#include <stdlib.h>
-
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define CLIENT_WINDOW_CAP 256
@@ -8,7 +6,6 @@ typedef enum {
   WINDOW_LAYOUT_TILED = 0,
   WINDOW_LAYOUT_TILED_VERTICAL = 1,
 } WindowLayout;
-
 
 
 typedef struct {
@@ -68,4 +65,3 @@ typedef struct {
   float test;
   float test1;
 }bd26;
-
