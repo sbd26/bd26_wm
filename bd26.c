@@ -564,6 +564,7 @@ void window_frame(Window win) {
         break;
       }
     }
+  XSetStandardProperties(wm.display, win_frame, classhint.res_class, NULL, None, NULL, 0, NULL);
   }
   XFree(classhint.res_class);
 

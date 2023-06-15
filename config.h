@@ -8,7 +8,7 @@ typedef struct {
 const char *startup_commands[] = {"killall dunst &",
                                   "setxkbmap us &",
                                   "nitrogen --restore &",
-                                  "dunst --config ~/.config/i3/dunstrc &",
+                                  "dunst &",
                                   "picom &",
                                   "polybar &"};
 
