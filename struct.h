@@ -1,10 +1,11 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define CLIENT_WINDOW_CAP 256
+#define CLIENT_WINDOW_CAP 128
 
 typedef enum {
   WINDOW_LAYOUT_TILED = 0,
   WINDOW_LAYOUT_TILED_VERTICAL = 1,
+  WINDOW_LAYOUT_TILED_UPPER_MASTER = 2,
 } WindowLayout;
 
 
@@ -50,7 +51,6 @@ typedef struct {
   Display *display;
   Window root;
   bool running;
-  uint8_t window_gap;
   
   WindowLayout current_layout[WORKSPACE];
   Client client_windows[WORKSPACE][CLIENT_WINDOW_CAP];
@@ -62,6 +62,5 @@ typedef struct {
   CurrentState currentstate[WORKSPACE];
   bool already_running[WORKSPACE];
   float gaps[WORKSPACE];
-  float test;
-  float test1;
+  float display_height, display_width;
 }bd26;

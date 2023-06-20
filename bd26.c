@@ -42,7 +42,6 @@ static void handle_unmap_notify(XUnmapEvent e);
 static void handle_key_press(XKeyEvent e);
 static void handle_button_press(XButtonEvent e);
 static void handle_motion_notify(XMotionEvent e);
-static void handle_poperty_notify(XEvent *e);
 //-----Other Functions start
 static void set_fullscreen(Window win);
 static void unset_fullscreen(Window win);
@@ -105,30 +104,34 @@ void move_another_workspace(Client *client, int32_t workspace) {
   }
   // save to the target workspace
   wm.client_windows[workspace][wm.clients_count[workspace]++] = *client;
-  //remvoe from the current workspace
+  // remvoe from the current workspace
   uint32_t cli_indx = get_client_index(client->frame);
 
-  Client * tmp_clients[wm.clients_count[current_workspace]];
+  Client *tmp_clients[wm.clients_count[current_workspace]];
 
-  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++) {
     tmp_clients[i] = &wm.client_windows[current_workspace][i];
   }
 
-  for (uint32_t i = cli_indx; i < wm.clients_count[current_workspace] - 1; i++){
+  for (uint32_t i = cli_indx; i < wm.clients_count[current_workspace] - 1;
+       i++) {
     tmp_clients[i] = tmp_clients[i + 1];
   }
 
   wm.clients_count[current_workspace]--;
 
-  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
+  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++) {
     wm.client_windows[current_workspace][i] = *tmp_clients[i];
   }
 
   XUnmapWindow(wm.display, client->frame);
   wm.swap_done[workspace] = true;
-  if (wm.clients_count[current_workspace] != 0){
+  if (wm.clients_count[current_workspace] != 0) {
     establish_window_layout(False);
-    change_focus_window(wm.client_windows[current_workspace][wm.clients_count[current_workspace] - 1].frame);
+    change_focus_window(
+        wm.client_windows[current_workspace]
+                         [wm.clients_count[current_workspace] - 1]
+                             .frame);
   }
 }
 
@@ -228,11 +231,11 @@ void mini_app() {
     return;
   }
   wm.currentstate[current_workspace] = MINI_STATE;
-  int width = DISPLAY_WIDTH / 3;
+  int width = wm.display_width / 3;
   int row_counts = (wm.clients_count[current_workspace] % 3)
                        ? (wm.clients_count[current_workspace] / 3 + 1)
                        : wm.clients_count[current_workspace] / 3;
-  int height = DISPLAY_HEIGHT / row_counts;
+  int height = wm.display_height / row_counts;
   int x = 10, y = 10;
   int col_count = 3;
   uint32_t counter = 0;
@@ -255,27 +258,6 @@ void mini_app() {
       break;
   }
 }
-
-void handle_poperty_notify(XEvent *event) {
-  Atom atom = XInternAtom(wm.display, "WM_CLASS", False);
-  if (event->xproperty.atom == atom) {
-    XTextProperty prop;
-    char **class_name;
-    int count;
-
-    XGetTextProperty(wm.display, event->xproperty.window, &prop, atom);
-    if (prop.nitems > 0 && prop.value) {
-      if (XmbTextPropertyToTextList(wm.display, &prop, &class_name, &count) ==
-              Success &&
-          count > 0) {
-        printf("Class name: %s\n", class_name[0]);
-        XFreeStringList(class_name);
-      }
-    }
-    XFree(prop.value);
-  }
-}
-
 void change_focus_window(Window win) {
   uint32_t client_index = get_client_index(win);
 
@@ -309,7 +291,8 @@ void swap(Client *client1, Client *client2) {
 }
 
 void Change_workspace(int32_t t_index) {
-  if (current_workspace == t_index) return;
+  if (current_workspace == t_index)
+    return;
   for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++) {
     XUnmapWindow(wm.display, wm.client_windows[current_workspace][i].frame);
     XUnmapWindow(
@@ -371,95 +354,131 @@ void establish_window_layout(bool restore_back) {
     Client *rooT = tmp_clients[0];
 
     if (clients_count == 1) {
-      set_fullscreen(rooT->frame);
+
+      XWindowAttributes attribs;
+      XGetWindowAttributes(wm.display, rooT->frame, &attribs);
+
+      wm.client_windows[current_workspace][0].fullscreen_revert_pos =
+          (Vec2){.x = attribs.x, .y = attribs.y};
+      wm.client_windows[current_workspace][0].fullscreen_revert_size =
+          (Vec2){.x = attribs.width, .y = attribs.height};
+
+      resize_client(&wm.client_windows[current_workspace][0],
+                    (Vec2){.x = (float)wm.display_width -
+                                (float)wm.gaps[current_workspace] * 2,
+                           .y = wm.display_height -
+                                (float)wm.gaps[current_workspace] * 2});
+
+      move_client(
+          &wm.client_windows[current_workspace][0],
+          (Vec2){.x = (float)wm.gaps[current_workspace],
+                 .y = (float)wm.gaps[current_workspace] + (float)BAR_SIZE});
+
+      if (wm.client_windows[current_workspace][0]
+                  .decoration.maximize_button_font.font != NULL &&
+          wm.client_windows[current_workspace][0]
+                  .decoration.title_bar_font.font != NULL &&
+          wm.client_windows[current_workspace][0]
+                  .decoration.maximize_button_font.font != NULL)
+        title_bar_stuff(&wm.client_windows[current_workspace][0]);
       return;
     }
 
-    resize_client(
-        rooT, (Vec2){.x = (float)DISPLAY_WIDTH / 2 + wm.gaps[current_workspace],
-                     .y = DISPLAY_HEIGHT - 20});
-    move_client(rooT, (Vec2){.x = 5, .y = 30});
+    resize_client(rooT, (Vec2){.x = (float)wm.display_width / 2 -
+                                    (float)wm.gaps[current_workspace],
+                               .y = wm.display_height -
+                                    (float)wm.gaps[current_workspace] * 2});
+    move_client(
+        rooT, (Vec2){.x = (float)wm.gaps[current_workspace],
+                     .y = (float)BAR_SIZE + (float)wm.gaps[current_workspace]});
     title_bar_stuff(rooT);
     rooT->fullscreen = false;
-    float y_cordintae = 30;
+    float y_cordintae = (float)BAR_SIZE + (float)wm.gaps[current_workspace];
 
     for (uint32_t i = 1; i < clients_count; i++) {
-      resize_client(
-          tmp_clients[i],
-          (Vec2){.x = (float)DISPLAY_WIDTH / 2 - wm.gaps[current_workspace] -
-                      wm.test,
-                 .y = ((float)DISPLAY_HEIGHT / (clients_count - 1) - 20)});
-      move_client(tmp_clients[i],
-                  (Vec2){.x = (float)DISPLAY_WIDTH / 2 + wm.test1 +
-                              wm.gaps[current_workspace],
-                         .y = y_cordintae});
-      y_cordintae += ((float)DISPLAY_HEIGHT / (clients_count - 1));
+      resize_client(tmp_clients[i],
+                    (Vec2){.x = (float)wm.display_width / 2 -
+                                (float)wm.gaps[current_workspace] * 2,
+                           .y = (float)wm.display_height / (clients_count - 1) -
+                                (float)wm.gaps[current_workspace] * 2});
+      move_client(tmp_clients[i], (Vec2){.x = (float)wm.display_width / 2 +
+                                              (float)wm.gaps[current_workspace],
+                                         .y = y_cordintae});
+      y_cordintae += ((float)wm.display_height / (clients_count - 1));
       if (tmp_clients[i]->decoration.title_bar_font.font != NULL &&
           tmp_clients[i]->decoration.close_button_font.font != NULL &&
           tmp_clients[i]->decoration.maximize_button_font.font != NULL)
         title_bar_stuff(tmp_clients[i]);
     }
-  }
-}
+  }else if (wm.current_layout[current_workspace] == WINDOW_LAYOUT_TILED_VERTICAL){
+    Client *rooT = tmp_clients[0];
+    if (clients_count == 1){
+      XWindowAttributes attribs;
+      XGetWindowAttributes(wm.display, rooT->frame, &attribs);
 
-void establish_window_layout_bak() {
-  int32_t master_index = -1;
-  uint32_t clients_on_monitor = 0;
-  bool found_master = false;
+      wm.client_windows[current_workspace][0].fullscreen_revert_pos =
+          (Vec2){.x = attribs.x, .y = attribs.y};
+      wm.client_windows[current_workspace][0].fullscreen_revert_size =
+          (Vec2){.x = attribs.width, .y = attribs.height};
 
-  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++) {
-    if (!found_master) {
-      master_index = i;
-      found_master = true;
-    }
-    clients_on_monitor++;
-  }
+      resize_client(&wm.client_windows[current_workspace][0],
+                    (Vec2){.x = (float)wm.display_width -
+                                (float)wm.gaps[current_workspace] * 2,
+                           .y = wm.display_height -
+                                (float)wm.gaps[current_workspace] * 2});
 
-  if (clients_on_monitor == 0 || !found_master)
-    return;
+      move_client(
+          &wm.client_windows[current_workspace][0],
+          (Vec2){.x = (float)wm.gaps[current_workspace],
+                 .y = (float)wm.gaps[current_workspace] + (float)BAR_SIZE});
 
-  Client *master = &wm.client_windows[current_workspace][master_index];
-
-  if (wm.current_layout[current_workspace] == WINDOW_LAYOUT_TILED) {
-    if (clients_on_monitor == 1) {
-      set_fullscreen(master->frame);
+      if (wm.client_windows[current_workspace][0]
+                  .decoration.maximize_button_font.font != NULL &&
+          wm.client_windows[current_workspace][0]
+                  .decoration.title_bar_font.font != NULL &&
+          wm.client_windows[current_workspace][0]
+                  .decoration.maximize_button_font.font != NULL)
+        title_bar_stuff(&wm.client_windows[current_workspace][0]);
       return;
     }
-    int fixed = (DISPLAY_WIDTH / clients_on_monitor) - wm.window_gap;
-    int x = wm.window_gap;
-    for (uint32_t i = 0; i < clients_on_monitor; i++) {
-      resize_client(
-          &wm.client_windows[current_workspace][i],
-          (Vec2){.x = fixed - wm.window_gap, .y = DISPLAY_HEIGHT - 30});
-      move_client(&wm.client_windows[current_workspace][i],
-                  (Vec2){.x = x, .y = 15});
-      x += fixed + wm.window_gap;
+    resize_client(rooT, (Vec2){.x = (float)wm.display_width - wm.gaps[current_workspace] * 2.00,
+                                      .y = (float)wm.display_height / 2.00 - (float)wm.gaps[current_workspace] * 2
+    });
+    move_client(rooT, (Vec2){
+      .x = wm.gaps[current_workspace],
+      .y = (float)BAR_SIZE + wm.gaps[current_workspace]
+    });
+    title_bar_stuff(rooT);
+    float x_cordinate = wm.gaps[current_workspace];
+    for (uint32_t i = 1; i < clients_count; i++){
+      resize_client(tmp_clients[i], (Vec2){
+        .x = (float)wm.display_width / (clients_count - 1) - (float)wm.gaps[current_workspace] * 2,
+        .y = (float)wm.display_height / 2 - (float)wm.gaps[current_workspace] * 2
+      });
+      move_client(tmp_clients[i], (Vec2){
+        .x = x_cordinate,
+        .y = (float)wm.display_height / 2 + (float)wm.gaps[current_workspace] * 3
+      });
+      x_cordinate += (float)wm.display_width / (clients_count - 1);
     }
   }
+
 }
 
 void resize_client(Client *client, Vec2 sz) {
   XWindowAttributes attributes;
   XGetWindowAttributes(wm.display, client->win, &attributes);
 
-  if (sz.x >= DISPLAY_WIDTH && sz.y >= DISPLAY_HEIGHT) {
+  if (sz.x >= wm.display_width && sz.y >= wm.display_height) {
     client->fullscreen = true;
     XSetWindowBorderWidth(wm.display, client->frame, 0);
     client->fullscreen_revert_size =
         (Vec2){.x = attributes.width, .y = attributes.height};
-    // client -> fullscreen_revert_pos = (Vec2) {.x = attributes.x, .y =
-    // attributes.y};
   } else {
     client->fullscreen = false;
     XSetWindowBorderWidth(wm.display, client->frame, BORDER_WIDTH);
   }
 
-  // XResizeWindow(wm.display, client -> win, sz.x, sz.y - TITLE_BAR_HEIGHT);
-  // XMoveWindow(wm.display, client->win, 0, TITLE_BAR_HEIGHT);
-  //
-  // XResizeWindow(wm.display, client -> decoration.title_bar, sz.x,
-  // TITLE_BAR_HEIGHT); XResizeWindow(wm.display, client -> frame, sz.x, sz.y -
-  // TITLE_BAR_HEIGHT); XRaiseWindow(wm.display, client -> frame);
   XMoveWindow(wm.display, client->win, 0, TITLE_BAR_HEIGHT);
   XResizeWindow(wm.display, client->decoration.title_bar, sz.x,
                 TITLE_BAR_HEIGHT);
@@ -489,12 +508,12 @@ void set_fullscreen(Window win) {
   wm.client_windows[current_workspace][client_index].fullscreen_revert_size =
       (Vec2){.x = attribs.width, .y = attribs.height};
 
-  resize_client(
-      &wm.client_windows[current_workspace][client_index],
-      (Vec2){.x = (float)DISPLAY_WIDTH - 20, .y = DISPLAY_HEIGHT - 20});
+  resize_client(&wm.client_windows[current_workspace][client_index],
+                (Vec2){.x = (float)wm.display_width,
+                       .y = wm.display_height + (float)BAR_SIZE});
 
   move_client(&wm.client_windows[current_workspace][client_index],
-              (Vec2){.x = 9.7, .y = 32.5});
+              (Vec2){.x = 0, .y = 0});
   wm.client_windows[current_workspace][client_index].fullscreen = true;
 
   if (wm.client_windows[current_workspace][client_index]
@@ -514,8 +533,11 @@ void unset_fullscreen(Window win) {
   const uint32_t client_index = get_client_index(win);
 
   resize_client(&wm.client_windows[current_workspace][client_index],
-                wm.client_windows[current_workspace][client_index]
-                    .fullscreen_revert_size);
+                (Vec2){wm.client_windows[current_workspace][client_index]
+                           .fullscreen_revert_size.x,
+                       wm.client_windows[current_workspace][client_index]
+                               .fullscreen_revert_size.y +
+                           (float)TITLE_BAR_HEIGHT});
   move_client(
       &wm.client_windows[current_workspace][client_index],
       wm.client_windows[current_workspace][client_index].fullscreen_revert_pos);
@@ -564,15 +586,16 @@ void window_frame(Window win) {
         break;
       }
     }
-  XSetStandardProperties(wm.display, win_frame, classhint.res_class, NULL, None, NULL, 0, NULL);
+    XSetStandardProperties(wm.display, win_frame, classhint.res_class, NULL,
+                           None, NULL, 0, NULL);
   }
   XFree(classhint.res_class);
 
   wm.client_windows[current_workspace][wm.clients_count[current_workspace]++] =
       (Client){.win = win,
                .frame = win_frame,
-               .fullscreen = attribs.width >= DISPLAY_WIDTH &&
-                             attribs.height >= DISPLAY_HEIGHT,
+               .fullscreen = attribs.width >= wm.display_width &&
+                             attribs.height >= wm.display_height,
                .is_floating = rules[i].is_floating};
   grab_window_key(win);
   wm.client_windows[current_workspace][wm.clients_count[current_workspace]]
@@ -668,34 +691,18 @@ void window_unframe(Window win) {
   const Window frame_window =
       wm.client_windows[current_workspace][client_index].frame;
 
-
-  Client * tmp_clients[wm.clients_count[current_workspace]];
-
-  for (uint32_t i = 0; i < wm.clients_count[current_workspace]; i++){
-    tmp_clients[i] = &wm.client_windows[current_workspace][i];
-  }
-
-  for (uint32_t i = client_index; i < wm.clients_count[current_workspace] - 1; i++){
-    tmp_clients[i] = tmp_clients[i+1];
-  }
-
-  for (uint32_t i = 0; i < wm.clients_count[current_workspace] - 1; i++){
-    wm.client_windows[current_workspace][i] = *tmp_clients[i];
-  }
-
-
   XReparentWindow(wm.display, frame_window, wm.root, 0, 0);
   XReparentWindow(wm.display, win, wm.root, 0, 0);
   XUnmapWindow(wm.display, frame_window);
-  //
-  // for (uint32_t i = client_index; i < wm.clients_count[current_workspace] - 1;
-  //      i++) {
-  //   printf("CLIENT INDEX IS %d : %d\n\n\n\n",
-  //          wm.clients_count[current_workspace], i);
-  //   wm.client_windows[current_workspace][i] =
-  //       wm.client_windows[current_workspace][i + 1];
-  // }
-  wm.clients_count[current_workspace]--;
+
+  for (uint32_t i = client_index; i < wm.clients_count[current_workspace] - 1;
+       i++) {
+    printf("CLIENT INDEX IS %d : %d\n\n\n\n",
+           wm.clients_count[current_workspace], i);
+    wm.client_windows[current_workspace][i] =
+        wm.client_windows[current_workspace][i + 1];
+  }
+  --wm.clients_count[current_workspace];
   if (wm.clients_count[current_workspace] != 0) {
     if (client_index == 0)
       client_index = 1;
@@ -745,11 +752,12 @@ void handle_unmap_notify(XUnmapEvent e) {
     return;
   }
   window_unframe(e.window);
-  if (wm.clients_count[current_workspace] == 0)
-    wm.gaps[current_workspace] = 0;
+  // if (wm.clients_count[current_workspace] == 0)
+  // wm.gaps[current_workspace] = 0;
 }
 
 void handle_configure_request(XConfigureRequestEvent e) {
+
   {
     XWindowChanges changes;
     changes.x = e.x;
@@ -926,6 +934,9 @@ void grab_global_key() {
            (MOD | ShiftMask), wm.root, false, GrabModeAsync, GrabModeAsync);
   XGrabKey(wm.display,
            XKeysymToKeycode(wm.display, INCREASE_DECREASE_MASTER_SIZE), MOD,
+           wm.root, false, GrabModeAsync, GrabModeAsync);
+  XGrabKey(wm.display,
+           XKeysymToKeycode(wm.display, CHANGE_TILE_STYLE), MOD,
            wm.root, false, GrabModeAsync, GrabModeAsync);
 }
 
@@ -1107,6 +1118,12 @@ void handle_key_press(XKeyEvent e) {
                XKeysymToKeycode(wm.display, INCREASE_DECREASE_MASTER_SIZE)) {
     wm.gaps[current_workspace] += 10;
     establish_window_layout(false);
+  }else if (e.state & MOD && e.keycode == XKeysymToKeycode(wm.display, CHANGE_TILE_STYLE)){
+    if (wm.current_layout[current_workspace] == 0)
+      wm.current_layout[current_workspace] = 1;
+    else
+      wm.current_layout[current_workspace] = 0;
+    establish_window_layout(false);
   }
 }
 
@@ -1121,16 +1138,21 @@ void run_bd26() {
   XSetErrorHandler(handle_wm_detected);
   if (!wm.clients_count[current_workspace])
     wm.clients_count[current_workspace] = 0;
+
+  for (uint32_t i = 0; i < WORKSPACE; i++) {
+    wm.clients_count[i] = 0;
+    wm.gaps[i] = 10.0;
+  }
+
+  wm.screen = DefaultScreen(wm.display);
+  wm.display_height = DisplayHeight(wm.display, wm.screen);
+  wm.display_height -= (float)BAR_SIZE;
+  wm.display_width = DisplayWidth(wm.display, wm.screen);
   wm.cursor_start_frame_size = (Vec2){.x = 0.0f, .y = 0.0f};
   wm.cursor_start_frame_pos = (Vec2){.x = 0.0f, .y = 0.0f};
   wm.cursor_start_pos = (Vec2){.x = 0.0f, .y = 0.0f};
   wm.current_layout[current_workspace] = WINDOW_LAYOUT_TILED;
-  wm.gaps[current_workspace] = 0;
-  // wm.window_gap = 10;
-  wm.test = 22;
-  wm.test1 = 15;
   wm.running = true;
-  wm.screen = DefaultScreen(wm.display);
   for (int i = 0; i < WORKSPACE; i++) {
     printf("Makint the state to normal");
     wm.currentstate[i] = NORMAL_STATE;
@@ -1184,9 +1206,6 @@ void run_bd26() {
       // minor cases end
       //
 
-    case PropertyNotify:
-      handle_poperty_notify(&e);
-      break;
     case ConfigureRequest:
       handle_configure_request(e.xconfigurerequest);
       break;
@@ -1234,9 +1253,6 @@ void close_bd26() { XCloseDisplay(wm.display); }
 
 int main() {
   wm = init_bd26();
-  for (uint32_t i = 0; i < WORKSPACE; i++) {
-    wm.clients_count[i] = 0;
-  }
   run_bd26();
   close_bd26();
 }

@@ -26,7 +26,7 @@ const Rule rules[] = {
 #define CMD_VOLUME_UP   "pactl set-sink-volume @DEFAULT_SINK@ +5%"
 #define CMD_VOLUME_DOWN "pactl set-sink-volume @DEFAULT_SINK@ -5%"
 #define CMD_VOLUME_MUTE "pactl set-sink-mute   @DEFAULT_SINK@ toggle"
-#define CMD_SCREENSHOT  "flameshot gui"
+#define CMD_SCREENSHOT  "xfce4-screenshooter &"
 
 //WINDOW RELATED 
 #define BORDER_WIDTH  2
@@ -34,6 +34,8 @@ const Rule rules[] = {
 #define UBORDER_COLOR 0x2E3440
 #define BG_COLOR      0xffffff
 
+
+#define CHANGE_TILE_STYLE XK_S
 
 //WINDOW NAVIGATOR KEY (VIM LIKE)
 #define NAVIGATE_UP  XK_K
@@ -69,6 +71,10 @@ const Rule rules[] = {
 #define MOVE_WINDOW_PREV XK_G //ok
 
 
+#define INCREASE_GAPS XK_Plus
+#define DECREASE_GAPS XK_Minus
+
+
 //Volumet Related
 #define VOLUME_UP   XK_Up
 #define VOLUME_DOWN XK_Down
@@ -102,3 +108,5 @@ const Rule rules[] = {
 #define BUTTON_GAPS 20
 
 #define XA_ATOM 4
+
+#define BAR_SIZE 23
