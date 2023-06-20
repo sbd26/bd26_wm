@@ -8,7 +8,7 @@ RESET='\033[0m'
 
 
 echo -e "${GREEN}Installing xorg and Basic Util ${RESET}"
-sudo pacman -S xorg xorg-xinit gcc make
+sudo pacman -S xorg xorg-xinit gcc make xfce4-screenshooter
 
 PROG=""
 

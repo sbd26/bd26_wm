@@ -22,11 +22,6 @@ typedef struct{
   FontStruct close_button_font, maximize_button_font, title_bar_font;
 }MAC_DECOR;
 
-typedef enum {
-  MINI_STATE = 0,
-  NORMAL_STATE = 1
-} CurrentState;
-
 typedef struct{
   Window win;
 }Bar;
@@ -59,7 +54,6 @@ typedef struct {
   bool swap_done[WORKSPACE];
   Bar bar;
   int screen;
-  CurrentState currentstate[WORKSPACE];
   bool already_running[WORKSPACE];
   float gaps[WORKSPACE];
   float display_height, display_width;

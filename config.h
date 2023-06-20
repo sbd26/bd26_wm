@@ -19,9 +19,10 @@ const Rule rules[] = {
 
 #define MOD Mod4Mask
 
+#define BAR_SIZE 23
 //APPLICATION
 #define CMD_BROWSER     "firefox &"
-#define CMD_TERMINAL    "alacritty &"
+#define CMD_TERMINAL    "st &"
 #define CMD_APPLAUNCHER "rofi -show drun &"
 #define CMD_VOLUME_UP   "pactl set-sink-volume @DEFAULT_SINK@ +5%"
 #define CMD_VOLUME_DOWN "pactl set-sink-volume @DEFAULT_SINK@ -5%"
@@ -32,7 +33,6 @@ const Rule rules[] = {
 #define BORDER_WIDTH  2
 #define FBORDER_COLOR 0x99d1db
 #define UBORDER_COLOR 0x2E3440
-#define BG_COLOR      0xffffff
 
 
 #define CHANGE_TILE_STYLE XK_S
@@ -81,8 +81,6 @@ const Rule rules[] = {
 #define VOLUME_MUTE XK_M
 
 
-#define DISPLAY_HEIGHT  745
-#define DISPLAY_WIDTH   1366
 #define WORKSPACE 4
 
 
@@ -109,4 +107,4 @@ const Rule rules[] = {
 
 #define XA_ATOM 4
 
-#define BAR_SIZE 23
+#define BG_COLOR      0xffffff
